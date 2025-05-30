@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -11,22 +10,6 @@ import (
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/utils"
 	"github.com/go-git/go-git/v5"
 )
-
-func clone(ctx context.Context, logger *slog.Logger, desc, path,
-	url string) error {
-
-	logger.Info("Cloning repository", "url", utils.SanitizeURL(url), "path",
-		path, "desc", desc)
-
-	_, err := git.PlainCloneContext(
-		ctx, path, false, &git.CloneOptions{URL: url},
-	)
-	if err != nil {
-		return fmt.Errorf("%s repository clone failed: %w", desc, err)
-	}
-
-	return nil
-}
 
 // Main handles the cloning of repositories and the execution of fuzz testing.
 // It ensures that any errors encountered during these processes are logged and
@@ -39,20 +22,16 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 	defer close(doneChan)
 
 	// Clone the project repository based on the provided configuration.
-	if err := clone(ctx, logger, "project", cfg.ProjectDir,
-		cfg.ProjectSrcPath); err != nil {
-		logger.Error("Repository cloning failed", "error", err)
+	logger.Info("Cloning project repository", "url", utils.SanitizeURL(
+		cfg.ProjectSrcPath), "path", cfg.ProjectDir)
 
-		// Perform workspace cleanup before exiting due to the cloning
-		// error.
-		utils.CleanupWorkspace(logger, cfg)
-		os.Exit(1)
-	}
-
-	// Clone the storage repository based on the provided configuration.
-	if err := clone(ctx, logger, "storage", cfg.CorpusDir,
-		cfg.GitStorageRepo); err != nil {
-		logger.Error("Repository cloning failed", "error", err)
+	_, err := git.PlainCloneContext(
+		ctx, cfg.ProjectDir, false, &git.CloneOptions{
+			URL: cfg.ProjectSrcPath,
+		},
+	)
+	if err != nil {
+		logger.Error("Project repository cloning failed", "error", err)
 
 		// Perform workspace cleanup before exiting due to the cloning
 		// error.

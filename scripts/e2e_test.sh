@@ -4,7 +4,7 @@ set -x
 
 # Specify the environment variables for the fuzzing process
 export PROJECT_SRC_PATH="https://github.com/lightningnetwork/lnd.git"
-export GIT_STORAGE_REPO="https://github.com/lightninglabs/lnd-fuzz.git"
+export CORPUS_DIR_PATH="~/corpus"
 export FUZZ_TIME="1700s"
 export FUZZ_PKGS_PATH="macaroons,routing,watchtower/wtclient,watchtower/wtwire,zpay32"
 export FUZZ_RESULTS_PATH="~/fuzz_results"

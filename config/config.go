@@ -13,10 +13,6 @@ import (
 )
 
 const (
-	// TmpCorpusDir is the temporary directory where the fuzzing corpus is
-	// stored.
-	TmpCorpusDir = "corpus"
-
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
@@ -29,7 +25,7 @@ const (
 type Config struct {
 	ProjectSrcPath string `long:"project_src_path" description:"Git repo URL of the project to fuzz" required:"true" env:"PROJECT_SRC_PATH"`
 
-	GitStorageRepo string `long:"git_storage_repo" description:"Git repository where the input corpus is stored" required:"true" env:"GIT_STORAGE_REPO"`
+	CorpusDirPath string `long:"corpus_dir_path" description:"Absolute path to corpus directory" required:"true" env:"CORPUS_DIR_PATH"`
 
 	FuzzResultsPath string `long:"fuzz_results_path" description:"Path to store fuzzing results" env:"FUZZ_RESULTS_PATH" required:"true"`
 
@@ -38,10 +34,6 @@ type Config struct {
 	FuzzTime time.Duration `long:"fuzz_time" description:"Duration in seconds for fuzzing run" env:"FUZZ_TIME" default:"120s"`
 
 	NumProcesses int `long:"num_processes" description:"Number of concurrent fuzzing processes" env:"FUZZ_NUM_PROCESSES" default:"1"`
-
-	// CorpusDir contains the absolute path to the directory where the
-	// fuzzing corpus is stored.
-	CorpusDir string
 
 	// ProjectDir contains the absolute path to the directory where the
 	// project is located.
@@ -72,13 +64,13 @@ func LoadConfig() (*Config, error) {
 	// to directories and files are cleaned and expanded before attempting
 	// to use them later on.
 	cfg.FuzzResultsPath = CleanAndExpandPath(cfg.FuzzResultsPath)
+	cfg.CorpusDirPath = CleanAndExpandPath(cfg.CorpusDirPath)
 
-	// Set the absolute path to the temp project and corpus directory.
+	// Set the absolute path to the temp project directory.
 	tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
 	if err != nil {
 		return nil, err
 	}
-	cfg.CorpusDir = filepath.Join(tmpDirPath, TmpCorpusDir)
 	cfg.ProjectDir = filepath.Join(tmpDirPath, TmpProjectDir)
 
 	return &cfg, nil

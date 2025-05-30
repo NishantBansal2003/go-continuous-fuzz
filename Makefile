@@ -35,7 +35,7 @@ docker-run-env: docker
 	docker run \
 	  --env FUZZ_NUM_PROCESSES="$(FUZZ_NUM_PROCESSES)" \
 	  --env PROJECT_SRC_PATH="$(PROJECT_SRC_PATH)" \
-	  --env GIT_STORAGE_REPO="$(GIT_STORAGE_REPO)" \
+	  --env CORPUS_DIR_PATH="$(CORPUS_DIR_PATH)" \
 	  --env FUZZ_TIME="$(FUZZ_TIME)" \
 	  --env FUZZ_PKGS_PATH="$(FUZZ_PKGS_PATH)" \
 	  --env FUZZ_RESULTS_PATH="$(FUZZ_RESULTS_PATH)" \

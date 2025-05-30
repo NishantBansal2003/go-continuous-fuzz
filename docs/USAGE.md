@@ -8,7 +8,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
 | -------------------- | --------------------- | --------------------------------------------------------------------------------------- | -------- | ------- |
 | `FUZZ_NUM_PROCESSES` | `--num_processes`     | Number of concurrent fuzzing processes                                                  | No       | 1       |
 | `PROJECT_SRC_PATH`   | `--project_src_path`  | Git repo URL of the project to fuzz                                                     | Yes      | —       |
-| `GIT_STORAGE_REPO`   | `--git_storage_repo`  | Git repo where the input corpus is stored                                               | Yes      | —       |
+| `CORPUS_DIR_PATH`   | `--corpus_dir_path`  | Absolute path to corpus directory                                               | Yes      | —       |
 | `FUZZ_TIME`          | `--fuzz_time`         | Duration for fuzzing run                                                                | No       | 120s    |
 | `FUZZ_PKGS_PATH`     | `--fuzz_pkgs_path`    | Comma-separated list of Go package path to fuzz, relative to the project root directory | Yes      | —       |
 | `FUZZ_RESULTS_PATH`  | `--fuzz_results_path` | Path to store fuzzing results                                                           | Yes      | —       |
@@ -47,7 +47,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
    ```bash
    export FUZZ_NUM_PROCESSES=<number_of_processes>
    export PROJECT_SRC_PATH=<project_repo_url>
-   export GIT_STORAGE_REPO=<storage_repo_url>
+   export CORPUS_DIR_PATH=<path/to/corpus/dir>
    export FUZZ_TIME=<time>
    export FUZZ_PKGS_PATH=<target_package>
    export FUZZ_RESULTS_PATH=<path/to/file>
@@ -57,9 +57,9 @@ You can configure **go-continuous-fuzz** using either environment variables or c
 
    ```bash
      --project_src_path=<project_repo_url>
-     --git_storage_repo=<storage_repo_url>
+     --corpus_dir_path=<path/to/corpus/dir>
      --fuzz_results_path=<path/to/file>
-     --fuzz_pkgs_path=<target_package>
+     --fuzz_pkgs_path=<path/to/corpus/dir>
      --fuzz_time=<time>
      --num_processes=<number_of_processes>
    ```

@@ -73,7 +73,7 @@ OR
 make docker-run-env \
   FUZZ_NUM_PROCESSES=<optional> \
   PROJECT_SRC_PATH=<required> \
-  GIT_STORAGE_REPO=<required> \
+  CORPUS_DIR_PATH=<required> \
   FUZZ_TIME=<optional> \
   FUZZ_PKGS_PATH=<required> \
   FUZZ_RESULTS_PATH=<required> \

@@ -87,6 +87,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Clone lnd-fuzz into ~/corpus
+        run: |
+          # create the corpus dir under $HOME
+          mkdir -p "$HOME/corpus"
+          git clone https://github.com/lightninglabs/lnd-fuzz.git "$HOME/corpus"
+
       - name: Set up Go
         id: setup
         uses: actions/setup-go@v4
