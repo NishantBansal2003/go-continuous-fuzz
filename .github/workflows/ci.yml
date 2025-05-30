@@ -87,11 +87,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Clone lnd-fuzz into ~/corpus
+      - name: Download seed_corpus into ~/corpus
         run: |
-          # create the corpus dir under $HOME
           mkdir -p "$HOME/corpus"
-          git clone https://github.com/lightninglabs/lnd-fuzz.git "$HOME/corpus"
+          curl -L \
+            https://codeload.github.com/NishantBansal2003/go-fuzzing-example/tar.gz/fuzz-example \
+            | tar -xz \
+              --strip-components=2 \
+              -C "$HOME/corpus" \
+              go-fuzzing-example-fuzz-example/seed_corpus
 
       - name: Set up Go
         id: setup

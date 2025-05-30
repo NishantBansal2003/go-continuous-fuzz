@@ -9,6 +9,7 @@ import (
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/fuzz"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/utils"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // Main handles the cloning of repositories and the execution of fuzz testing.
@@ -28,6 +29,12 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 	_, err := git.PlainCloneContext(
 		ctx, cfg.ProjectDir, false, &git.CloneOptions{
 			URL: cfg.ProjectSrcPath,
+			// Temporary until the previous PR got merged
+			ReferenceName: plumbing.NewBranchReferenceName(
+				"fuzz-example"),
+			SingleBranch: true,
+			Depth:        1,
+			// // Temporary until the previous PR got merged
 		},
 	)
 	if err != nil {
