@@ -61,7 +61,7 @@ For more details, see: [docs/USAGE.md](USAGE.md)
 
 ### Step 6: Run the go-continuous-fuzz project in docker
 
-1. Run the following command to run the Continuous-Fuzz app in docker container:
+1. Run the following command to run the go-continuous-fuzz project in docker container:
 
 ```sh
 make docker-run-file ENV_FILE=<required> VOLUME_MOUNTS=<optional>

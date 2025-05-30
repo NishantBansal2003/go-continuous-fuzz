@@ -1,9 +1,9 @@
 # Variables
-APP_NAME := app
+APP_NAME := go-continuous-fuzz
 SRC := main.go
 DOCKER_APP_NAME := go-continuous-fuzz
 
-#? build: Build the project and create app binary
+#? build: Build the project and create go-continuous-fuzz binary
 build:
 	@go build -o $(APP_NAME) $(SRC)
 
