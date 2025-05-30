@@ -75,7 +75,7 @@ make docker-run-env \
   PROJECT_SRC_PATH=<required> \
   GIT_STORAGE_REPO=<required> \
   FUZZ_TIME=<optional> \
-  FUZZ_PKG=<required> \
+  FUZZ_PKGS_PATH=<required> \
   FUZZ_RESULTS_PATH=<required> \
   VOLUME_MOUNTS=<optional>
 ```

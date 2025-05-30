@@ -33,7 +33,7 @@ type Config struct {
 
 	FuzzResultsPath string `long:"fuzz_results_path" description:"Path to store fuzzing results" env:"FUZZ_RESULTS_PATH" required:"true"`
 
-	FuzzPkgs []string `long:"fuzz_pkg" description:"Comma-separated list of package names to fuzz" required:"true" env:"FUZZ_PKG" env-delim:","`
+	FuzzPkgsPath []string `long:"fuzz_pkgs_path" description:"Comma-separated list of package path to fuzz, relative to the project root directory" required:"true" env:"FUZZ_PKGS_PATH" env-delim:","`
 
 	FuzzTime time.Duration `long:"fuzz_time" description:"Duration in seconds for fuzzing run" env:"FUZZ_TIME" default:"120s"`
 

@@ -28,7 +28,7 @@ func RunFuzzing(ctx context.Context, logger *slog.Logger,
 	g, goCtx := errgroup.WithContext(ctx)
 
 	// Loop over each package the user requested fuzzing for.
-	for _, pkg := range cfg.FuzzPkgs {
+	for _, pkg := range cfg.FuzzPkgsPath {
 		pkg := pkg // capture loop variable
 
 		// Run fuzzing for each package in a separate goroutine.
