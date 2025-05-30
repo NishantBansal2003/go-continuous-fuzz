@@ -39,7 +39,7 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 	defer close(doneChan)
 
 	// Clone the project repository based on the provided configuration.
-	if err := clone(ctx, logger, "project", config.DefaultProjectDir,
+	if err := clone(ctx, logger, "project", config.ProjectDir,
 		cfg.ProjectSrcPath); err != nil {
 		logger.Error("Repository cloning failed", "error", err)
 
@@ -50,7 +50,7 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 	}
 
 	// Clone the storage repository based on the provided configuration.
-	if err := clone(ctx, logger, "storage", config.DefaultCorpusDir,
+	if err := clone(ctx, logger, "storage", config.CorpusDir,
 		cfg.GitStorageRepo); err != nil {
 		logger.Error("Repository cloning failed", "error", err)
 

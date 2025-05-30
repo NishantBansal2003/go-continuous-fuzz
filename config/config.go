@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	// DefaultCorpusDir is the directory where the fuzzing corpus is stored.
-	DefaultCorpusDir = "out/corpus"
+	// CorpusDir is the directory where the fuzzing corpus is stored.
+	CorpusDir = "out/corpus"
 
-	// DefaultProjectDir is the directory where the project is located.
-	DefaultProjectDir = "out/project"
+	// ProjectDir is the directory where the project is located.
+	ProjectDir = "out/project"
 )
 
 // Config encapsulates all configuration parameters required for the fuzzing

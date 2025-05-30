@@ -26,7 +26,7 @@ func CleanupWorkspace(logger *slog.Logger) {
 func SaveFuzzCorpus(logger *slog.Logger, cfg *config.Config, pkg,
 	target string) {
 
-	corpusPath := filepath.Join(config.DefaultCorpusDir, pkg, "testdata",
+	corpusPath := filepath.Join(config.CorpusDir, pkg, "testdata",
 		"fuzz", target)
 	if _, err := os.Stat(corpusPath); os.IsNotExist(err) {
 		logger.Info("No corpus directory to output", "path", corpusPath)

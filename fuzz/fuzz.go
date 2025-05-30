@@ -116,7 +116,7 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger,
 
 	// Construct the absolute path to the package directory within the
 	// default project directory.
-	pkgPath := filepath.Join(config.DefaultProjectDir, pkg)
+	pkgPath := filepath.Join(config.ProjectDir, pkg)
 
 	// Prepare the command to list all test functions matching the pattern
 	// "^Fuzz". This leverages Go's testing tool to identify fuzz targets.
@@ -169,7 +169,7 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 
 	// Construct the absolute path to the package directory within the
 	// default project directory.
-	pkgPath := filepath.Join(config.DefaultProjectDir, pkg)
+	pkgPath := filepath.Join(config.ProjectDir, pkg)
 
 	// Retrieve the current working directory.
 	cwd, err := os.Getwd()
@@ -179,7 +179,7 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 
 	// Define the path to store the corpus data generated during fuzzing.
 	corpusPath := filepath.Join(
-		cwd, config.DefaultCorpusDir, pkg, "testdata", "fuzz",
+		cwd, config.CorpusDir, pkg, "testdata", "fuzz",
 	)
 
 	// Define the path where failing corpus inputs might be saved by the
