@@ -11,10 +11,14 @@ import (
 	"github.com/otiai10/copy"
 )
 
-// CleanupWorkspace deletes the "out" directory to reset the workspace state.
+// CleanupWorkspace deletes the temp directory to reset the workspace state.
 // Any errors encountered during removal are logged, but do not stop execution.
-func CleanupWorkspace(logger *slog.Logger) {
-	if err := os.RemoveAll("out"); err != nil {
+func CleanupWorkspace(logger *slog.Logger, cfg *config.Config) {
+	// Since the cfg has path to project and corpus directory and we want to
+	// remove its temporary parent direcory, so we will go back to its
+	// parent directry
+	parentDir := filepath.Dir(cfg.ProjectDir)
+	if err := os.RemoveAll(parentDir); err != nil {
 		logger.Error("workspace cleanup failed", "error", err)
 	}
 }
@@ -26,7 +30,7 @@ func CleanupWorkspace(logger *slog.Logger) {
 func SaveFuzzCorpus(logger *slog.Logger, cfg *config.Config, pkg,
 	target string) {
 
-	corpusPath := filepath.Join(config.CorpusDir, pkg, "testdata",
+	corpusPath := filepath.Join(cfg.CorpusDir, pkg, "testdata",
 		"fuzz", target)
 	if _, err := os.Stat(corpusPath); os.IsNotExist(err) {
 		logger.Info("No corpus directory to output", "path", corpusPath)

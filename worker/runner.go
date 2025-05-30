@@ -39,24 +39,24 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 	defer close(doneChan)
 
 	// Clone the project repository based on the provided configuration.
-	if err := clone(ctx, logger, "project", config.ProjectDir,
+	if err := clone(ctx, logger, "project", cfg.ProjectDir,
 		cfg.ProjectSrcPath); err != nil {
 		logger.Error("Repository cloning failed", "error", err)
 
 		// Perform workspace cleanup before exiting due to the cloning
 		// error.
-		utils.CleanupWorkspace(logger)
+		utils.CleanupWorkspace(logger, cfg)
 		os.Exit(1)
 	}
 
 	// Clone the storage repository based on the provided configuration.
-	if err := clone(ctx, logger, "storage", config.CorpusDir,
+	if err := clone(ctx, logger, "storage", cfg.CorpusDir,
 		cfg.GitStorageRepo); err != nil {
 		logger.Error("Repository cloning failed", "error", err)
 
 		// Perform workspace cleanup before exiting due to the cloning
 		// error.
-		utils.CleanupWorkspace(logger)
+		utils.CleanupWorkspace(logger, cfg)
 		os.Exit(1)
 	}
 
@@ -66,7 +66,7 @@ func Main(ctx context.Context, logger *slog.Logger, cfg *config.Config,
 
 		// Perform workspace cleanup before exiting due to the fuzzing
 		// error.
-		utils.CleanupWorkspace(logger)
+		utils.CleanupWorkspace(logger, cfg)
 		os.Exit(1)
 	}
 }

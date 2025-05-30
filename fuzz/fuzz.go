@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/parser"
@@ -51,7 +50,7 @@ func RunFuzzing(ctx context.Context, logger *slog.Logger,
 			}
 
 			// Discover all fuzz targets in this package (pkg)
-			targets, err := listFuzzTargets(goCtx, logger, pkg)
+			targets, err := listFuzzTargets(goCtx, logger, cfg, pkg)
 			if err != nil {
 				return fmt.Errorf("failed to list targets for"+
 					" package %q: %w", pkg, err)
@@ -110,13 +109,13 @@ func RunFuzzing(ctx context.Context, logger *slog.Logger,
 // package. It uses "go test -list=^Fuzz" to list the functions and filters
 // those that start with "Fuzz".
 func listFuzzTargets(ctx context.Context, logger *slog.Logger,
-	pkg string) ([]string, error) {
+	cfg *config.Config, pkg string) ([]string, error) {
 
 	logger.Info("Discovering fuzz targets", "package", pkg)
 
 	// Construct the absolute path to the package directory within the
 	// default project directory.
-	pkgPath := filepath.Join(config.ProjectDir, pkg)
+	pkgPath := filepath.Join(cfg.ProjectDir, pkg)
 
 	// Prepare the command to list all test functions matching the pattern
 	// "^Fuzz". This leverages Go's testing tool to identify fuzz targets.
@@ -169,18 +168,10 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 
 	// Construct the absolute path to the package directory within the
 	// default project directory.
-	pkgPath := filepath.Join(config.ProjectDir, pkg)
-
-	// Retrieve the current working directory.
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
+	pkgPath := filepath.Join(cfg.ProjectDir, pkg)
 
 	// Define the path to store the corpus data generated during fuzzing.
-	corpusPath := filepath.Join(
-		cwd, config.CorpusDir, pkg, "testdata", "fuzz",
-	)
+	corpusPath := filepath.Join(cfg.CorpusDir, pkg, "testdata", "fuzz")
 
 	// Define the path where failing corpus inputs might be saved by the
 	// fuzzing process.
@@ -216,17 +207,11 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 	// Channel to signal if the fuzz target encountered a failure.
 	fuzzTargetFailingChan := make(chan bool, 1)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-
 	// Stream and process the standard output of 'go test', which may
 	// include both stdout and stderr content.
-	go streamFuzzOutput(logger.With("target", target).With("package", pkg),
-		&wg, stdout, maybeFailingCorpusPath, cfg, target,
+	streamFuzzOutput(logger.With("target", target).With("package", pkg),
+		stdout, maybeFailingCorpusPath, cfg, target,
 		fuzzTargetFailingChan)
-
-	// Wait for the output streaming to complete.
-	wg.Wait()
 
 	// Wait for the 'go test' command to finish execution.
 	err = cmd.Wait()
@@ -276,11 +261,9 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 // into the log file for analysis. The function signals completion through the
 // provided WaitGroup and communicates whether a failure was encountered via the
 // fuzzTargetFailingChan channel.
-func streamFuzzOutput(logger *slog.Logger, wg *sync.WaitGroup, r io.Reader,
+func streamFuzzOutput(logger *slog.Logger, r io.Reader,
 	corpusPath string, cfg *config.Config, target string,
 	failureChan chan bool) {
-
-	defer wg.Done()
 
 	// Create a FuzzOutputProcessor to handle parsing and logging of fuzz
 	// output.
