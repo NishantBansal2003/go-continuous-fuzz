@@ -10,98 +10,38 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/parser"
-	"golang.org/x/sync/errgroup"
 )
 
-// RunFuzzing iterates over the configured fuzz packages and executes all
-// fuzz targets found in each package. It spawns parallel goroutines for each
-// target but will cease launching new work as soon as the context is canceled.
-func RunFuzzing(ctx context.Context, logger *slog.Logger,
-	cfg *config.Config) error {
+// ListPkgsFuzzTargets scans each package path listed in cfg.FuzzPkgsPath,
+// invokes listFuzzTargets to retrieve fuzz targets for that package, and
+// returns a map of package-to-targets along with the total number of fuzz
+// targets found across all packages. If any package listing fails, it returns
+// a non-nil error.
+func ListPkgsFuzzTargets(ctx context.Context, logger *slog.Logger,
+	cfg *config.Config) (map[string][]string, int, error) {
 
-	// Create an errgroup that shares this context. Any error or
-	// cancellation will cancel all in-flight fuzz runs.
-	g, goCtx := errgroup.WithContext(ctx)
+	pkgToTargets := make(map[string][]string, len(cfg.FuzzPkgsPath))
+	totalTargets := 0
 
-	// Loop over each package the user requested fuzzing for.
-	for _, pkg := range cfg.FuzzPkgsPath {
-		pkg := pkg // capture loop variable
+	for _, pkgPath := range cfg.FuzzPkgsPath {
+		targets, err := listFuzzTargets(ctx, logger, cfg, pkgPath)
+		if err != nil {
+			return nil, 0, fmt.Errorf(
+				"failed to list fuzz targets for package "+
+					"%q: %w", pkgPath, err,
+			)
+		}
 
-		// Run fuzzing for each package in a separate goroutine.
-		g.Go(func() error {
-			// Before starting work, check if we've been asked to
-			// stop.
-			select {
-			case <-ctx.Done():
-				// Context canceled: stop processing further
-				// packages.
-				return nil
-			case <-goCtx.Done():
-				// error already encountered: stop processing
-				// further
-				return nil
-			default:
-				// Context still active: proceed to list and run
-				// fuzz targets.
-			}
-
-			// Discover all fuzz targets in this package (pkg)
-			targets, err := listFuzzTargets(goCtx, logger, cfg, pkg)
-			if err != nil {
-				return fmt.Errorf("failed to list targets for"+
-					" package %q: %w", pkg, err)
-			}
-
-			for _, target := range targets {
-				// Capture loop variables for closure
-				pkg := pkg
-				target := target
-
-				// Launch each fuzz target in a separate
-				// goroutine. If an error other than a fuzz
-				// target failure occurs during execution, it is
-				// returned and will cause the errgroup to
-				// cancel all other running goroutines.
-				g.Go(func() error {
-					// Before starting work, check if we've
-					// been asked to stop.
-					select {
-					case <-ctx.Done():
-						// Context canceled: stop
-						// processing further packages.
-						return nil
-					case <-goCtx.Done():
-						// error already encountered:
-						// stop processing further
-						return nil
-					default:
-						// Context still active: proceed
-						// to list and run fuzz targets.
-					}
-
-					if err := executeFuzzTarget(goCtx,
-						logger, pkg, target,
-						cfg); err != nil {
-						return fmt.Errorf("fuzzing "+
-							"failed for %q/%q: %w",
-							pkg, target, err)
-					}
-					return nil
-				})
-			}
-			return nil
-		})
+		pkgToTargets[pkgPath] = targets
+		count := len(targets)
+		totalTargets += count
 	}
 
-	// Wait for all fuzz target executions to finish or any to error/cancel.
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("error during fuzzing: %w", err)
-	}
-
-	return nil
+	return pkgToTargets, totalTargets, nil
 }
 
 // listFuzzTargets discovers and returns a list of fuzz targets for the given
@@ -117,7 +57,7 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger,
 	pkgPath := filepath.Join(cfg.ProjectDir, pkg)
 
 	// Prepare the command to list all test functions matching the pattern
-	// "^Fuzz". This leverages Go's testing tool to identify fuzz targets.
+	// "^Fuzz". This leverages go's testing tool to identify fuzz targets.
 	cmd := exec.CommandContext(ctx, "go", "test", "-list=^Fuzz", ".")
 
 	// Set the working directory to the package path.
@@ -157,13 +97,14 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger,
 	return targets, nil
 }
 
-// executeFuzzTarget runs the specified fuzz target for a package using the
-// "go test" command. It sets up the necessary environment, starts the command,
-// streams its output and log the failure (if any) in the log file.
-func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
-	target string, cfg *config.Config) error {
+// ExecuteFuzzTarget runs the specified fuzz target for a package for a given
+// duration using the "go test" command. It sets up the necessary environment,
+// starts the command, streams its output, and logs any failures to a log file.
+func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
+	target string, cfg *config.Config, fuzzTime time.Duration) error {
 
-	logger.Info("Executing fuzz target", "package", pkg, "target", target)
+	logger.Info("Executing fuzz target", "package", pkg, "target", target,
+		"duration", fuzzTime)
 
 	// Construct the absolute path to the package directory within the
 	// default project directory.
@@ -182,8 +123,8 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 		"test",
 		fmt.Sprintf("-fuzz=^%s$", target),
 		fmt.Sprintf("-test.fuzzcachedir=%s", corpusPath),
-		fmt.Sprintf("-fuzztime=%s", cfg.FuzzTime),
-		fmt.Sprintf("-parallel=%d", cfg.NumProcesses),
+		fmt.Sprintf("-fuzztime=%s", fuzzTime),
+		fmt.Sprintf("-parallel=1"),
 	}
 
 	// Initialize the 'go test' command with the specified arguments and

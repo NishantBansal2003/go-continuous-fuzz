@@ -1,6 +1,6 @@
 #!/bin/bash
-set -euo pipefail # Enable strict error handling
-set -x            # Enable command tracing
+set -uo pipefail # Enable strict error handling
+set -x           # Enable command tracing
 
 # =============================================================================
 # CONFIGURATION
@@ -11,6 +11,7 @@ export CORPUS_DIR_PATH="$HOME/corpus"
 export FUZZ_TIME="15m"
 export FUZZ_PKGS_PATH="parser,stringutils"
 export FUZZ_RESULTS_PATH="$HOME/fuzz_results"
+export FUZZ_NUM_PROCESSES=3
 
 # Temporary Variables
 readonly PROJECT_BRANCH="fuzz-example"
@@ -107,14 +108,37 @@ done
 
 # Execute fuzzing process
 echo "🔍 Starting fuzzing process (timeout: $FUZZ_TIME)..."
-timeout -s INT --preserve-status "$FUZZ_TIME" make run || {
-  status=$?
-  # Handle timeout (SIGINT/130) as expected termination
-  if [[ $status -ne 130 ]]; then
-    echo "❌ Fuzzing exited with unexpected error: $status"
-    exit $status
+mkdir -p "$FUZZ_RESULTS_PATH"
+MAKE_LOG="$FUZZ_RESULTS_PATH/make_run.log"
+
+# Run `make run` under `timeout`, capturing stdout+stderr into MAKE_LOG.
+timeout -s INT --preserve-status "$FUZZ_TIME" make run 2>&1 | tee "$MAKE_LOG"
+status=${PIPESTATUS[0]}
+
+# Handle exit codes:
+#   130 → timeout sent SIGINT; treat as expected termination
+#   any other non-zero → unexpected error
+if [[ $status -ne 130 ]]; then
+  echo "❌ Fuzzing exited with unexpected error (status: $status)."
+  exit "$status"
+fi
+
+# List of required patterns to check in the log
+readonly REQUIRED_PATTERNS=(
+  "workerID=1"
+  "workerID=2"
+  "workerID=3"
+  'msg="Per-target fuzz timeout calculated" duration=3m45s'
+)
+
+# Verify that worker logs contain expected entries
+echo "🔍 Verifying worker log entries in $MAKE_LOG..."
+for pattern in "${REQUIRED_PATTERNS[@]}"; do
+  if ! grep -q -- "$pattern" "$MAKE_LOG"; then
+    echo "❌ ERROR: Missing expected log entry: $pattern"
+    exit 1
   fi
-}
+done
 
 # Capture final corpus state
 echo "📈 Recording final corpus state..."
