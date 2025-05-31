@@ -8,10 +8,10 @@ set -x           # Enable command tracing
 # Environment variables for fuzzing process configuration
 export PROJECT_SRC_PATH="https://github.com/NishantBansal2003/go-fuzzing-example.git"
 export CORPUS_DIR_PATH="$HOME/corpus"
-export FUZZ_TIME="15m"
+export SYNC_FREQUENCY="15m"
 export FUZZ_PKGS_PATH="parser,stringutils"
 export FUZZ_RESULTS_PATH="$HOME/fuzz_results"
-export FUZZ_NUM_PROCESSES=3
+export NUM_WORKERS=3
 
 # Temporary Variables
 readonly PROJECT_BRANCH="fuzz-example"
@@ -107,12 +107,12 @@ for target in "${FUZZ_TARGETS[@]}"; do
 done
 
 # Execute fuzzing process
-echo "🔍 Starting fuzzing process (timeout: $FUZZ_TIME)..."
+echo "🔍 Starting fuzzing process (timeout: $SYNC_FREQUENCY)..."
 mkdir -p "$FUZZ_RESULTS_PATH"
 MAKE_LOG="$FUZZ_RESULTS_PATH/make_run.log"
 
 # Run `make run` under `timeout`, capturing stdout+stderr into MAKE_LOG.
-timeout -s INT --preserve-status "$FUZZ_TIME" make run 2>&1 | tee "$MAKE_LOG"
+timeout -s INT --preserve-status "$SYNC_FREQUENCY" make run 2>&1 | tee "$MAKE_LOG"
 status=${PIPESTATUS[0]}
 
 # Handle exit codes:
@@ -128,7 +128,7 @@ readonly REQUIRED_PATTERNS=(
   "workerID=1"
   "workerID=2"
   "workerID=3"
-  'msg="Per-target fuzz timeout calculated" duration=3m45s'
+  'msg="Per-target fuzz timeout calculated" duration=11m15s'
 )
 
 # Verify that worker logs contain expected entries

@@ -33,10 +33,10 @@ docker-run-file: docker
 docker-run-env: docker
 	@echo "Running $(DOCKER_APP_NAME) with explicit environment variables"
 	docker run \
-	  --env FUZZ_NUM_PROCESSES="$(FUZZ_NUM_PROCESSES)" \
+	  --env NUM_WORKERS="$(NUM_WORKERS)" \
 	  --env PROJECT_SRC_PATH="$(PROJECT_SRC_PATH)" \
 	  --env CORPUS_DIR_PATH="$(CORPUS_DIR_PATH)" \
-	  --env FUZZ_TIME="$(FUZZ_TIME)" \
+	  --env SYNC_FREQUENCY="$(SYNC_FREQUENCY)" \
 	  --env FUZZ_PKGS_PATH="$(FUZZ_PKGS_PATH)" \
 	  --env FUZZ_RESULTS_PATH="$(FUZZ_RESULTS_PATH)" \
 	  $(VOLUME_MOUNTS) \

@@ -6,10 +6,10 @@ You can configure **go-continuous-fuzz** using either environment variables or c
 
 | Environment Variable | Command-line Flag     | Description                                                                             | Required | Default |
 | -------------------- | --------------------- | --------------------------------------------------------------------------------------- | -------- | ------- |
-| `FUZZ_NUM_PROCESSES` | `--num_processes`     | Number of concurrent fuzzing processes                                                  | No       | 1       |
+| `NUM_WORKERS` | `--num_workers`     | Number of concurrent fuzzing workers                                                  | No       | 1       |
 | `PROJECT_SRC_PATH`   | `--project_src_path`  | Git repo URL of the project to fuzz                                                     | Yes      | —       |
 | `CORPUS_DIR_PATH`   | `--corpus_dir_path`  | Absolute path to corpus directory                                               | Yes      | —       |
-| `FUZZ_TIME`          | `--fuzz_time`         | Duration for fuzzing run                                                                | No       | 120s    |
+| `SYNC_FREQUENCY`          | `--sync_frequency`         | Duration between consecutive fuzzing cycles                                                                | No       | 120s    |
 | `FUZZ_PKGS_PATH`     | `--fuzz_pkgs_path`    | Comma-separated list of Go package path to fuzz, relative to the project root directory | Yes      | —       |
 | `FUZZ_RESULTS_PATH`  | `--fuzz_results_path` | Path to store fuzzing results                                                           | Yes      | —       |
 
@@ -27,7 +27,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
    The tool automatically detects all available fuzz targets in the provided project repository.
 
 3. **Fuzzing Execution:**  
-   Go's native fuzzing is executed on each detected fuzz target. The number of concurrent fuzzing processes is controlled by the `FUZZ_NUM_PROCESSES` variable.
+   Go's native fuzzing is executed on each detected fuzz target. The number of concurrent fuzzing workers is controlled by the `NUM_WORKERS` variable.
 
 4. **Corpus Persistence:**  
    For each fuzz target, the fuzzing engine generates an input corpus. Depending on the `FUZZ_RESULTS_PATH` setting, this corpus is saved to the specified directory, ensuring that the test inputs are preserved and can be reused in future runs.
@@ -45,10 +45,10 @@ You can configure **go-continuous-fuzz** using either environment variables or c
    You can use environment variables:
 
    ```bash
-   export FUZZ_NUM_PROCESSES=<number_of_processes>
+   export NUM_WORKERS=<number_of_workers>
    export PROJECT_SRC_PATH=<project_repo_url>
    export CORPUS_DIR_PATH=<path/to/corpus/dir>
-   export FUZZ_TIME=<time>
+   export SYNC_FREQUENCY=<time>
    export FUZZ_PKGS_PATH=<target_package>
    export FUZZ_RESULTS_PATH=<path/to/file>
    ```
@@ -60,8 +60,8 @@ You can configure **go-continuous-fuzz** using either environment variables or c
      --corpus_dir_path=<path/to/corpus/dir>
      --fuzz_results_path=<path/to/file>
      --fuzz_pkgs_path=<path/to/corpus/dir>
-     --fuzz_time=<time>
-     --num_processes=<number_of_processes>
+     --sync_frequency=<time>
+     --num_workers=<number_of_workers>
    ```
 
 3. **Run the Fuzzing Engine:**  

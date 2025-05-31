@@ -31,9 +31,9 @@ type Config struct {
 
 	FuzzPkgsPath []string `long:"fuzz_pkgs_path" description:"Comma-separated list of package path to fuzz, relative to the project root directory" required:"true" env:"FUZZ_PKGS_PATH" env-delim:","`
 
-	FuzzTime time.Duration `long:"fuzz_time" description:"Duration in seconds for fuzzing run" env:"FUZZ_TIME" default:"120s"`
+	SyncFrequency time.Duration `long:"sync_frequency" description:"Duration between consecutive fuzzing cycles" env:"SYNC_FREQUENCY" default:"120s"`
 
-	NumProcesses int `long:"num_processes" description:"Number of concurrent fuzzing processes" env:"FUZZ_NUM_PROCESSES" default:"1"`
+	NumWorkers int `long:"num_workers" description:"Number of concurrent fuzzing workers" env:"NUM_WORKERS" default:"1"`
 
 	// ProjectDir contains the absolute path to the directory where the
 	// project is located.
@@ -51,12 +51,12 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	// Validate the number of processes to ensure it is within the allowed
+	// Validate the number of workers to ensure it is within the allowed
 	// range.
 	maxProcs := runtime.NumCPU()
-	if cfg.NumProcesses <= 0 || cfg.NumProcesses > maxProcs {
-		return nil, fmt.Errorf("invalid number of processes: %d, "+
-			"allowed range is [1, %d]", cfg.NumProcesses,
+	if cfg.NumWorkers <= 0 || cfg.NumWorkers > maxProcs {
+		return nil, fmt.Errorf("invalid number of workers: %d, "+
+			"allowed range is [1, %d]", cfg.NumWorkers,
 			runtime.NumCPU())
 	}
 

@@ -71,10 +71,10 @@ OR
 
 ```sh
 make docker-run-env \
-  FUZZ_NUM_PROCESSES=<optional> \
+  NUM_WORKERS=<optional> \
   PROJECT_SRC_PATH=<required> \
   CORPUS_DIR_PATH=<required> \
-  FUZZ_TIME=<optional> \
+  SYNC_FREQUENCY=<optional> \
   FUZZ_PKGS_PATH=<required> \
   FUZZ_RESULTS_PATH=<required> \
   VOLUME_MOUNTS=<optional>

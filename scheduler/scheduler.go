@@ -20,7 +20,7 @@ import (
 //  1. Cloning or pulling the Git repository specified in cfg.ProjectSrcPath.
 //  2. Listing fuzz targets in the cloned repository.
 //  3. Launching scheduler goroutines to execute all fuzz targets for a portion
-//     of cfg.FuzzTime.
+//     of cfg.SyncFrequency.
 //  4. Cleaning up the workspace (deleting cfg.ProjectDir, temporary artifacts,
 //     etc.).
 //
@@ -130,7 +130,7 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 }
 
 // scheduleFuzzing enqueues all discovered fuzz targets into a task queue and
-// spins up cfg.NumProcesses workers. Each worker runs until either:
+// spins up cfg.NumWorkers workers. Each worker runs until either:
 //   - All tasks are completed.
 //   - A worker returns an error (errgroup will cancel the others).
 //   - The cycle context (ctx) is canceled.
@@ -146,8 +146,8 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 		Format(time.RFC1123))
 
 	// Calculate the fuzzing time for each fuzz target.
-	fuzzSeconds := calculateFuzzSeconds(cfg.FuzzTime, cfg.NumProcesses,
-		totalTargets)
+	fuzzSeconds := utils.CalculateFuzzSeconds(cfg.SyncFrequency,
+		cfg.NumWorkers, totalTargets)
 	if fuzzSeconds <= 0 {
 		logger.Error("invalid fuzz duration", "duration", fuzzSeconds)
 
@@ -174,7 +174,7 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 
 	// Use an errgroup to cancel all workers if any single worker errors.
 	g, goCtx := errgroup.WithContext(ctx)
-	for i := 1; i <= cfg.NumProcesses; i++ {
+	for i := 1; i <= cfg.NumWorkers; i++ {
 		workerID := i // capture loop variable
 		g.Go(func() error {
 			return worker.RunWorker(workerID, goCtx, taskQueue,
@@ -193,13 +193,4 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 	}
 
 	logger.Info("All fuzz targets processed successfully in this cycle")
-}
-
-// calculateFuzzSeconds calculate per-target fuzz duration:
-// (FuzzTime * NumProcesses) / totalTargets.
-func calculateFuzzSeconds(fuzzTime time.Duration, numProcesses int,
-	totalTargets int) float64 {
-
-	return fuzzTime.Seconds() * float64(numProcesses) /
-		float64(totalTargets)
 }
