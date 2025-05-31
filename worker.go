@@ -1,4 +1,4 @@
-package worker
+package main
 
 import (
 	"context"
@@ -6,9 +6,6 @@ import (
 	"log/slog"
 	"sync"
 	"time"
-
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/fuzz"
 )
 
 // Task represents a single fuzz‐target job, containing the package path and the
@@ -33,8 +30,6 @@ func NewTaskQueue() *TaskQueue {
 
 // Enqueue adds a new Task to the back of the queue.
 func (q *TaskQueue) Enqueue(t Task) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	q.tasks = append(q.tasks, t)
 }
 
@@ -60,15 +55,14 @@ func (q *TaskQueue) Dequeue() (Task, bool) {
 	return t, true
 }
 
-// RunWorker continuously pulls tasks from taskQueue and executes them via
-// fuzz.ExecuteFuzzTarget. Each Task is run with its own timeout (taskTimeout).
+// runWorker continuously pulls tasks from taskQueue and executes them via
+// fuzz.executeFuzzTarget. Each Task is run with its own timeout (taskTimeout).
 //
 // If the schedular context is canceled or any Task execution returns an error,
-// RunWorker stops and returns that error. If the queue is empty, it logs that
+// runWorker stops and returns that error. If the queue is empty, it logs that
 // it’s done and returns nil.
-func RunWorker(workerID int, schedulerCtx context.Context, taskQueue *TaskQueue,
-	taskTimeout time.Duration, logger *slog.Logger,
-	cfg *config.Config) error {
+func runWorker(workerID int, schedulerCtx context.Context, taskQueue *TaskQueue,
+	taskTimeout time.Duration, logger *slog.Logger, cfg *Config) error {
 
 	for {
 		task, ok := taskQueue.Dequeue()
@@ -88,7 +82,7 @@ func RunWorker(workerID int, schedulerCtx context.Context, taskQueue *TaskQueue,
 		// target.
 		taskCtx, cancel := context.WithTimeout(schedulerCtx,
 			taskTimeout)
-		err := fuzz.ExecuteFuzzTarget(taskCtx, logger, task.Package,
+		err := executeFuzzTarget(taskCtx, logger, task.Package,
 			task.Target, cfg, taskTimeout)
 		cancel()
 

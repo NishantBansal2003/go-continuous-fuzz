@@ -1,4 +1,4 @@
-package scheduler
+package main
 
 import (
 	"context"
@@ -6,16 +6,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/fuzz"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/utils"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/worker"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"golang.org/x/sync/errgroup"
 )
 
-// StartFuzzCycles runs an infinite loop of fuzzing cycles. Each cycle consists
+// startFuzzCycles runs an infinite loop of fuzzing cycles. Each cycle consists
 // of:
 //  1. Cloning or pulling the Git repository specified in cfg.ProjectSrcPath.
 //  2. Listing fuzz targets in the cloned repository.
@@ -26,12 +22,12 @@ import (
 //
 // The loop repeats until the parent context is canceled. Errors in cloning or
 // target discovery are returned immediately
-func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
-	Config, cycleDuration time.Duration) {
+func startFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *Config,
+	cycleDuration time.Duration) {
 
 	for {
 		// 1. Clone or pull the repository.
-		logger.Info("Syncing project repository", "repo_url", utils.
+		logger.Info("Syncing project repository", "repo_url",
 			SanitizeURL(cfg.ProjectSrcPath), "local_path",
 			cfg.ProjectDir)
 
@@ -52,12 +48,12 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 
 			// Perform workspace cleanup before exiting due to the
 			// cloning error.
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 			os.Exit(1)
 		}
 
 		// 2. Discover fuzz targets.
-		pkgTargets, totalTargets, err := fuzz.ListPkgsFuzzTargets(ctx,
+		pkgTargets, totalTargets, err := listPkgsFuzzTargets(ctx,
 			logger, cfg)
 		if err != nil {
 			logger.Error("Failed to list fuzz targets; aborting "+
@@ -65,14 +61,14 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 
 			// Perform workspace cleanup before exiting due to the
 			// list fuzz targets error.
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 			os.Exit(1)
 		}
 
 		if totalTargets == 0 {
 			logger.Warn("No fuzz targets found; aborting " +
 				"scheduler; please add some fuzz targets")
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 			os.Exit(0)
 		}
 
@@ -98,7 +94,7 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 
 			// Cancel the current cycle.
 			cancelCycle()
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 
 		case <-time.After(cycleDuration):
 			logger.Info("Cycle duration complete; initiating " +
@@ -110,7 +106,7 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 			// wait before the fuzzing worker is closed before
 			// cleanup.
 			<-doneChan
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 
 		case <-ctx.Done():
 			logger.Info("Shutdown initiated during fuzzing " +
@@ -122,7 +118,7 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 			// wait before the fuzzing worker is closed before
 			// cleanup.
 			<-doneChan
-			utils.CleanupWorkspace(logger, cfg)
+			cleanupWorkspace(logger, cfg)
 
 			return
 		}
@@ -136,8 +132,8 @@ func StartFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *config.
 //   - The cycle context (ctx) is canceled.
 //
 // Returns an error if any worker fails.
-func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
-	Config, pkgTargets map[string][]string, totalTargets int,
+func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
+	pkgTargets map[string][]string, totalTargets int,
 	doneChan chan struct{}) {
 
 	defer close(doneChan)
@@ -146,14 +142,14 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 		Format(time.RFC1123))
 
 	// Calculate the fuzzing time for each fuzz target.
-	fuzzSeconds := utils.CalculateFuzzSeconds(cfg.SyncFrequency,
+	fuzzSeconds := CalculateFuzzSeconds(cfg.SyncFrequency,
 		cfg.NumWorkers, totalTargets)
 	if fuzzSeconds <= 0 {
 		logger.Error("invalid fuzz duration", "duration", fuzzSeconds)
 
 		// Perform workspace cleanup before exiting due to the fuzzing
 		// error.
-		utils.CleanupWorkspace(logger, cfg)
+		cleanupWorkspace(logger, cfg)
 		os.Exit(1)
 	}
 	perTargetTimeout := time.Duration(fuzzSeconds) * time.Second
@@ -162,10 +158,10 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 		perTargetTimeout)
 
 	// Build a thread-safe task queue.
-	taskQueue := worker.NewTaskQueue()
+	taskQueue := NewTaskQueue()
 	for pkgPath := range pkgTargets {
 		for _, target := range pkgTargets[pkgPath] {
-			taskQueue.Enqueue(worker.Task{
+			taskQueue.Enqueue(Task{
 				Package: pkgPath,
 				Target:  target,
 			})
@@ -177,7 +173,7 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 	for i := 1; i <= cfg.NumWorkers; i++ {
 		workerID := i // capture loop variable
 		g.Go(func() error {
-			return worker.RunWorker(workerID, goCtx, taskQueue,
+			return runWorker(workerID, goCtx, taskQueue,
 				perTargetTimeout, logger, cfg)
 		})
 	}
@@ -188,7 +184,7 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 
 		// Perform workspace cleanup before exiting due to the fuzzing
 		// error.
-		utils.CleanupWorkspace(logger, cfg)
+		cleanupWorkspace(logger, cfg)
 		os.Exit(1)
 	}
 

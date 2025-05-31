@@ -1,4 +1,4 @@
-package utils
+package main
 
 import (
 	"fmt"
@@ -7,13 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 )
 
-// CleanupWorkspace deletes the temp directory to reset the workspace state.
+// cleanupWorkspace deletes the temp directory to reset the workspace state.
 // Any errors encountered during removal are logged, but do not stop execution.
-func CleanupWorkspace(logger *slog.Logger, cfg *config.Config) {
+func cleanupWorkspace(logger *slog.Logger, cfg *Config) {
 	// Since the cfg has path to project and corpus directory and we want to
 	// remove its temporary parent direcory, so we will go back to its
 	// parent directry

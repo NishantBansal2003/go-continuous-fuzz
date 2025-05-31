@@ -9,8 +9,6 @@ import (
 
 	"log/slog"
 
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/scheduler"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -23,7 +21,7 @@ func main() {
 
 	// Load configuration settings from environment variables or command
 	// line flags.
-	cfg, err := config.LoadConfig()
+	cfg, err := loadConfig()
 	if err != nil {
 		var fe *flags.Error
 		if errors.As(err, &fe) && fe.Type == flags.ErrHelp {
@@ -51,7 +49,7 @@ func main() {
 	}()
 
 	// Start the continuous fuzzing cycles.
-	scheduler.StartFuzzCycles(appCtx, logger, cfg, cfg.SyncFrequency)
+	startFuzzCycles(appCtx, logger, cfg, cfg.SyncFrequency)
 
 	logger.Info("Program exited.")
 }

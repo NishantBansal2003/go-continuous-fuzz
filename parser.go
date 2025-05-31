@@ -1,4 +1,4 @@
-package parser
+package main
 
 import (
 	"bufio"
@@ -9,9 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/utils"
 )
 
 var (
@@ -33,14 +30,14 @@ var (
 	)
 )
 
-// FuzzOutputProcessor handles parsing and logging of fuzzing output streams,
+// fuzzOutputProcessor handles parsing and logging of fuzzing output streams,
 // detecting failures, and capturing/logging failing input data.
-type FuzzOutputProcessor struct {
+type fuzzOutputProcessor struct {
 	// Logger for informational and error messages.
 	logger *slog.Logger
 
 	// Configuration settings provided by the user
-	cfg *config.Config
+	cfg *Config
 
 	// Directory containing the fuzzing corpus.
 	corpusDir string
@@ -52,12 +49,12 @@ type FuzzOutputProcessor struct {
 	logFile *os.File
 }
 
-// NewFuzzOutputProcessor constructs a FuzzOutputProcessor for the given logger,
+// NewFuzzOutputProcessor constructs a fuzzOutputProcessor for the given logger,
 // config, corpus directory, and fuzz target name.
-func NewFuzzOutputProcessor(logger *slog.Logger, cfg *config.Config,
-	corpusDir string, targetName string) *FuzzOutputProcessor {
+func NewFuzzOutputProcessor(logger *slog.Logger, cfg *Config,
+	corpusDir string, targetName string) *fuzzOutputProcessor {
 
-	return &FuzzOutputProcessor{
+	return &fuzzOutputProcessor{
 		logger:     logger,
 		cfg:        cfg,
 		corpusDir:  corpusDir,
@@ -65,10 +62,10 @@ func NewFuzzOutputProcessor(logger *slog.Logger, cfg *config.Config,
 	}
 }
 
-// ProcessFuzzStream reads each line from the fuzzing output stream, logs all
+// processFuzzStream reads each line from the fuzzing output stream, logs all
 // lines, and captures failure details if a failure is detected. Returns true if
 // a failure was found and processed, false otherwise.
-func (fp *FuzzOutputProcessor) ProcessFuzzStream(stream io.Reader) bool {
+func (fp *fuzzOutputProcessor) processFuzzStream(stream io.Reader) bool {
 	scanner := bufio.NewScanner(stream)
 
 	// Scan until a failure line is found; if not found, return false.
@@ -84,7 +81,7 @@ func (fp *FuzzOutputProcessor) ProcessFuzzStream(stream io.Reader) bool {
 
 // scanUntilFailure scans the output until a failure indicator (--- FAIL:) is
 // found. Returns true if a failure line is detected, false otherwise.
-func (fp *FuzzOutputProcessor) scanUntilFailure(scanner *bufio.Scanner) bool {
+func (fp *fuzzOutputProcessor) scanUntilFailure(scanner *bufio.Scanner) bool {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fp.logger.Info("Fuzzer output", "message", line)
@@ -99,13 +96,13 @@ func (fp *FuzzOutputProcessor) scanUntilFailure(scanner *bufio.Scanner) bool {
 
 // processFailureLines processes lines after a failure is detected, writes them
 // to a log file, and attempts to extract and log the failing input data.
-func (fp *FuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
+func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
 	// Construct the log file path for storing failure details.
 	logFileName := fmt.Sprintf("%s_failure.log", fp.targetName)
 	logPath := filepath.Join(fp.cfg.FuzzResultsPath, logFileName)
 
 	// Ensure the results directory exists.
-	if err := utils.EnsureDirExists(fp.cfg.FuzzResultsPath); err != nil {
+	if err := EnsureDirExists(fp.cfg.FuzzResultsPath); err != nil {
 		fp.logger.Error("Failed to create fuzz results directory",
 			"error", err)
 		return
@@ -209,7 +206,7 @@ func parseFailureLine(line string) (string, string) {
 
 // readFailingInput attempts to read the failing input file from the corpus
 // directory.Returns the file contents or a placeholder string if reading fails.
-func (fp *FuzzOutputProcessor) readFailingInput(target, id string) string {
+func (fp *fuzzOutputProcessor) readFailingInput(target, id string) string {
 	// Construct the path to the failing input file.
 	failingInputPath := filepath.Join(target, id)
 	inputPath := filepath.Join(fp.corpusDir, failingInputPath)

@@ -1,4 +1,4 @@
-package fuzz
+package main
 
 import (
 	"bytes"
@@ -11,18 +11,15 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/parser"
 )
 
-// ListPkgsFuzzTargets scans each package path listed in cfg.FuzzPkgsPath,
+// listPkgsFuzzTargets scans each package path listed in cfg.FuzzPkgsPath,
 // invokes listFuzzTargets to retrieve fuzz targets for that package, and
 // returns a map of package-to-targets along with the total number of fuzz
 // targets found across all packages. If any package listing fails, it returns
 // a non-nil error.
-func ListPkgsFuzzTargets(ctx context.Context, logger *slog.Logger,
-	cfg *config.Config) (map[string][]string, int, error) {
+func listPkgsFuzzTargets(ctx context.Context, logger *slog.Logger,
+	cfg *Config) (map[string][]string, int, error) {
 
 	pkgToTargets := make(map[string][]string, len(cfg.FuzzPkgsPath))
 	totalTargets := 0
@@ -48,7 +45,7 @@ func ListPkgsFuzzTargets(ctx context.Context, logger *slog.Logger,
 // package. It uses "go test -list=^Fuzz" to list the functions and filters
 // those that start with "Fuzz".
 func listFuzzTargets(ctx context.Context, logger *slog.Logger,
-	cfg *config.Config, pkg string) ([]string, error) {
+	cfg *Config, pkg string) ([]string, error) {
 
 	logger.Info("Discovering fuzz targets", "package", pkg)
 
@@ -97,11 +94,11 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger,
 	return targets, nil
 }
 
-// ExecuteFuzzTarget runs the specified fuzz target for a package for a given
+// executeFuzzTarget runs the specified fuzz target for a package for a given
 // duration using the "go test" command. It sets up the necessary environment,
 // starts the command, streams its output, and logs any failures to a log file.
-func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
-	target string, cfg *config.Config, fuzzTime time.Duration) error {
+func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
+	target string, cfg *Config, fuzzTime time.Duration) error {
 
 	logger.Info("Executing fuzz target", "package", pkg, "target", target,
 		"duration", fuzzTime)
@@ -191,24 +188,24 @@ func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 }
 
 // streamFuzzOutput reads and processes the standard output of a fuzzing
-// process. It utilizes a FuzzOutputProcessor to parse each line of output,
+// process. It utilizes a fuzzOutputProcessor to parse each line of output,
 // identifying any errors or failures that occur during fuzzing. If a failure is
 // detected, it logs the error details and the corresponding failing test case
 // into the log file for analysis. The function signals completion through the
 // provided WaitGroup and communicates whether a failure was encountered via the
 // fuzzTargetFailingChan channel.
 func streamFuzzOutput(logger *slog.Logger, r io.Reader,
-	corpusPath string, cfg *config.Config, target string,
+	corpusPath string, cfg *Config, target string,
 	failureChan chan bool) {
 
-	// Create a FuzzOutputProcessor to handle parsing and logging of fuzz
+	// Create a fuzzOutputProcessor to handle parsing and logging of fuzz
 	// output.
-	processor := parser.NewFuzzOutputProcessor(logger, cfg, corpusPath,
+	processor := NewFuzzOutputProcessor(logger, cfg, corpusPath,
 		target)
 
 	// Process the fuzzing output stream. This will log all output, detect
 	// failures, and write failure details to disk if encountered.
-	failureDetected := processor.ProcessFuzzStream(r)
+	failureDetected := processor.processFuzzStream(r)
 
 	// Communicate the result (failure detected or not) back to the caller.
 	failureChan <- failureDetected

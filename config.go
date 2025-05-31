@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"fmt"
@@ -40,10 +40,10 @@ type Config struct {
 	ProjectDir string
 }
 
-// LoadConfig parses configuration from environment variables and command-line
+// loadConfig parses configuration from environment variables and command-line
 // flags. It validates required fields and applies sensible defaults.
 // Returns a pointer to a Config struct or an error if validation fails.
-func LoadConfig() (*Config, error) {
+func loadConfig() (*Config, error) {
 	var cfg Config
 
 	// Parse configuration, populating the cfg struct.
