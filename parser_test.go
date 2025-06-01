@@ -17,13 +17,6 @@ func TestParseFailureLine(t *testing.T) {
 		expectedID     string
 	}{
 		{
-			name: "Seed corpus failure log line",
-			logLine: "failure while testing seed corpus " +
-				"entry: FuzzFoo/771e938e4458e983",
-			expectedTarget: "FuzzFoo",
-			expectedID:     "771e938e4458e983",
-		},
-		{
 			name: "Fuzzing failure log with saved input " +
 				"path",
 			logLine: "Failing input written to testdata/fuzz" +
@@ -94,7 +87,7 @@ func TestReadInputData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewFuzzOutputProcessor(&slog.Logger{},
-				&Config{}, tt.corpusPath, "")
+				&Config{}, tt.corpusPath, "", "")
 
 			actualData := processor.readFailingInput(tt.fuzzTarget,
 				tt.testcaseID)

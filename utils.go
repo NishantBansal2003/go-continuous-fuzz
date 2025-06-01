@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -59,4 +61,39 @@ func CalculateFuzzSeconds(syncFrequency time.Duration, numWorkers int,
 
 	return syncFrequency.Seconds() * float64(numWorkers) /
 		float64(totalTargets)
+}
+
+// ComputeSHA256Base64Short computes a SHA-256 hash of the concatenation of
+// the given package name, fuzz target, and error data, then returns the
+// first 16 characters of the base64 URL-encoded hash.
+//
+// This function is designed to generate a short but unique signature string
+// to identify and deduplicate GitHub issues caused by the same crash,
+// helping to avoid opening multiple issues for identical errors.
+func ComputeSHA256Base64Short(pkg, fuzzTarget, errorData string) string {
+	h := sha256.New()
+	h.Write([]byte(pkg))
+	h.Write([]byte(fuzzTarget))
+	h.Write([]byte(errorData))
+	hash := h.Sum(nil)
+
+	base64Hash := base64.URLEncoding.EncodeToString(hash)
+	return base64Hash[:16]
+}
+
+// FileExistsInDir checks whether a file with the specified name exists
+// directly within the given directory (non-recursively).
+func FileExistsInDir(dirPath, fileName string) (bool, error) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return false, err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() && entry.Name() == fileName {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

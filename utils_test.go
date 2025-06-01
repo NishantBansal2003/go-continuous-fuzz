@@ -67,3 +67,21 @@ func TestCalculateFuzzSeconds(t *testing.T) {
 		"calculated fuzz duration does not match expected value",
 	)
 }
+
+// TestComputeSHA256Base64Short verifies that ComputeSHA256Base64Short correctly
+// computes a short, base64-encoded SHA256 hash based on the package name,
+// fuzz target, and error data. This test ensures that deduplication logic
+// based on this hash remains stable and predictable.
+func TestComputeSHA256Base64Short(t *testing.T) {
+	packageName := "parser"
+	targetName := "FuzzParseComplex"
+	errorData := "        parser_test.go:14: panic for input \"LNDFUZ\": " +
+		"runtime error: index out of range [6] with length 6\n    \n"
+
+	expectedHash := "_Vx2ncgXFOpdUg85"
+	actualHash := ComputeSHA256Base64Short(packageName, targetName,
+		errorData)
+
+	assert.Equal(t, expectedHash, actualHash, "Computed hash does not "+
+		"match the expected value")
+}

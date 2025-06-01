@@ -1,6 +1,7 @@
 #!/bin/bash
 set -uo pipefail # Enable strict error handling
 set -x           # Enable command tracing
+shopt -s nullglob
 
 # =============================================================================
 # CONFIGURATION
@@ -9,6 +10,7 @@ set -x           # Enable command tracing
 export PROJECT_SRC_PATH="https://github.com/NishantBansal2003/go-fuzzing-example.git"
 export CORPUS_DIR_PATH="$HOME/corpus"
 export SYNC_FREQUENCY="15m"
+export MAKE_TIMEOUT="20m"
 export FUZZ_PKGS_PATH="parser,stringutils"
 export FUZZ_RESULTS_PATH="$HOME/fuzz_results"
 export NUM_WORKERS=3
@@ -112,7 +114,7 @@ mkdir -p "$FUZZ_RESULTS_PATH"
 MAKE_LOG="$FUZZ_RESULTS_PATH/make_run.log"
 
 # Run `make run` under `timeout`, capturing stdout+stderr into MAKE_LOG.
-timeout -s INT --preserve-status "$SYNC_FREQUENCY" make run 2>&1 | tee "$MAKE_LOG"
+timeout -s INT --preserve-status "$MAKE_TIMEOUT" make run 2>&1 | tee "$MAKE_LOG"
 status=${PIPESTATUS[0]}
 
 # Handle exit codes:
@@ -129,6 +131,7 @@ readonly REQUIRED_PATTERNS=(
   "workerID=2"
   "workerID=3"
   'msg="Per-target fuzz timeout calculated" duration=11m15s'
+  'Known crash detected. Please fix the failing testcase.'
 )
 
 # Verify that worker logs contain expected entries
@@ -176,9 +179,13 @@ done
 # Verify crash reports
 echo "📄 Checking crash reports..."
 required_crashes=(
-  "$FUZZ_RESULTS_PATH/FuzzParseComplex_failure.log"
-  "$FUZZ_RESULTS_PATH/FuzzUnSafeReverseString_failure.log"
+  "$FUZZ_RESULTS_PATH/parser_FuzzParseComplex__Vx2ncgXFOpdUg85_failure.log"
 )
+
+# Expand glob pattern into matching files
+for file in $FUZZ_RESULTS_PATH/stringutils_FuzzUnSafeReverseString_*_failure.log; do
+  required_crashes+=("$file")
+done
 
 for crash_file in "${required_crashes[@]}"; do
   if [[ ! -f "$crash_file" ]]; then

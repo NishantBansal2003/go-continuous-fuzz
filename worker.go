@@ -33,13 +33,6 @@ func (q *TaskQueue) Enqueue(t Task) {
 	q.tasks = append(q.tasks, t)
 }
 
-// Length returns the current number of tasks in the queue.
-func (q *TaskQueue) Length() int {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	return len(q.tasks)
-}
-
 // Dequeue removes and returns the next Task from the queue. If the queue is
 // empty, it returns false for the second return value.
 func (q *TaskQueue) Dequeue() (Task, bool) {

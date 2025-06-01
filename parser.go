@@ -17,15 +17,13 @@ var (
 	// input ID.
 	//
 	// It matches lines like:
-	//   "failure while testing seed corpus entry: FuzzFoo/771e938e4458e983"
 	//   "Failing input written to testdata/fuzz/FuzzFoo/771e938e4458e983"
 	//
 	// Captured groups:
 	//   - "target": the fuzz target name (e.g., "FuzzFoo")
 	//   - "id": the hexadecimal input ID (e.g., "771e938e4458e983")
 	fuzzFailureRegex = regexp.MustCompile(
-		`(?:failure while testing seed corpus entry:\s*|Failing ` +
-			`input written to\s*testdata/fuzz/)` +
+		`Failing input written to testdata/fuzz/` +
 			`(?P<target>[^/]+)/(?P<id>[0-9a-f]+)`,
 	)
 )
@@ -42,6 +40,9 @@ type fuzzOutputProcessor struct {
 	// Directory containing the fuzzing corpus.
 	corpusDir string
 
+	// Name of the package under test.
+	packageName string
+
 	// Name of the fuzz target under test.
 	targetName string
 
@@ -51,14 +52,15 @@ type fuzzOutputProcessor struct {
 
 // NewFuzzOutputProcessor constructs a fuzzOutputProcessor for the given logger,
 // config, corpus directory, and fuzz target name.
-func NewFuzzOutputProcessor(logger *slog.Logger, cfg *Config,
-	corpusDir string, targetName string) *fuzzOutputProcessor {
+func NewFuzzOutputProcessor(logger *slog.Logger, cfg *Config, corpusDir, pkg,
+	targetName string) *fuzzOutputProcessor {
 
 	return &fuzzOutputProcessor{
-		logger:     logger,
-		cfg:        cfg,
-		corpusDir:  corpusDir,
-		targetName: targetName,
+		logger:      logger,
+		cfg:         cfg,
+		corpusDir:   corpusDir,
+		packageName: pkg,
+		targetName:  targetName,
 	}
 }
 
@@ -97,52 +99,20 @@ func (fp *fuzzOutputProcessor) scanUntilFailure(scanner *bufio.Scanner) bool {
 // processFailureLines processes lines after a failure is detected, writes them
 // to a log file, and attempts to extract and log the failing input data.
 func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
-	// Construct the log file path for storing failure details.
-	logFileName := fmt.Sprintf("%s_failure.log", fp.targetName)
-	logPath := filepath.Join(fp.cfg.FuzzResultsPath, logFileName)
-
-	// Ensure the results directory exists.
-	if err := EnsureDirExists(fp.cfg.FuzzResultsPath); err != nil {
-		fp.logger.Error("Failed to create fuzz results directory",
-			"error", err)
-		return
-	}
-
-	// Create the log file for writing.
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		fp.logger.Error("Failed to create log file", "error", err)
-		return
-	}
-	fp.logFile = logFile
-
-	// Ensure the log file is closed at the end.
-	defer func() {
-		if err := fp.logFile.Close(); err != nil {
-			fp.logger.Error("Failed to close log file", "error",
-				err)
-		}
-	}()
-
-	fp.logger.Info("Failure log initialized", "path", logPath)
-
+	var errorLog string
+	var errorInput string
 	var errorData string
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		fp.logger.Info("Fuzzer output", "message", line)
 
-		// Write the current line to the failure log file.
-		_, err = fp.logFile.WriteString(line + "\n")
-		if err != nil {
-			fp.logger.Error("Failed to write log line", "error",
-				err)
-			return
-		}
+		// Write the current line to the failure log.
+		errorLog = errorLog + line + "\n"
 
 		// If error data has already been captured, skip further
 		// extraction.
-		if errorData != "" {
+		if errorInput != "" {
 			continue
 		}
 
@@ -158,23 +128,132 @@ func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
 		target, id := parseFailureLine(line)
 		// If either target or ID is empty, skip further processing.
 		if target == "" || id == "" {
+			// errorData stores the error lines for deduplication
+			// purposes. In case of a failure from newly generated
+			// inputs, the error lines stop when we encounter a line
+			// like: "Failing input written to testdata/fuzz/FuzzFoo
+			// /771e938e4458e983". This results in 'target' or 'id'
+			// being non-empty, and we stop collecting errorData at
+			// that point. However, if the failure comes from a seed
+			// corpus entry, 'target' and 'id' will always be empty.
+			// In such cases, we collect all the error data instead.
+			if !strings.Contains(line, "FAIL") {
+				errorData = errorData + line + "\n"
+			}
+
 			continue
 		}
 
 		// Read and store the input data associated with the failing
 		// target and ID.
-		errorData = fp.readFailingInput(target, id)
+		errorInput = fp.readFailingInput(target, id)
 	}
 
-	// Write the error data (if any) to the log file.
-	if errorData != "" {
-		_, err = fp.logFile.WriteString(errorData + "\n")
-		if err != nil {
-			fp.logger.Error("Failed to write error data", "error",
+	// Ensure the results directory exists.
+	if err := EnsureDirExists(fp.cfg.FuzzResultsPath); err != nil {
+		fp.logger.Error("Failed to create fuzz results directory",
+			"error", err)
+		return
+	}
+
+	// Check if the crash has already been recorded to avoid duplicate
+	// logging.
+	isKnown, logFileName, err := fp.isCrashDuplicate(errorData)
+	if err != nil {
+		fp.logger.Error("Failed to perform crash deduplication",
+			"error", err)
+		return
+	}
+	if isKnown {
+		fp.logger.Info("Known crash detected. Please fix the failing "+
+			"testcase.", "log_file", logFileName)
+		return
+	}
+
+	// A new unique crash has been detected. Proceed to log the crash
+	// details.
+	if err := fp.writeCrashLog(logFileName, errorLog,
+		errorInput); err != nil {
+		fp.logger.Error("Failed to write crash log", "error", err)
+		return
+	}
+}
+
+// isCrashDuplicate checks whether a crash with the same hash has already been
+// logged. Returns true if the crash is already known, false otherwise, along
+// with the generated log file name.
+func (fp *fuzzOutputProcessor) isCrashDuplicate(errorData string) (bool,
+	string, error) {
+
+	// Compute a short signature hash for the crash to help with
+	// deduplication.
+	crashHash := ComputeSHA256Base64Short(fp.packageName, fp.targetName,
+		errorData)
+
+	// Construct the log file name using the package, target name and crash
+	// hash.
+	logFileName := fmt.Sprintf("%s_%s_%s_failure.log", fp.packageName,
+		fp.targetName, crashHash)
+
+	// Check if a log file with the same signature already exists in the
+	// fuzz results directory.
+	isKnown, err := FileExistsInDir(fp.cfg.FuzzResultsPath, logFileName)
+	if err != nil {
+		return false, "", fmt.Errorf("checking for existing crash "+
+			"log: %w", err)
+	}
+
+	return isKnown, logFileName, nil
+}
+
+// writeCrashLog creates and writes crash logs into a file at the given location
+func (fp *fuzzOutputProcessor) writeCrashLog(logFileName, errorLog,
+	errorInput string) error {
+
+	// Construct the log file path for storing failure details.
+	logPath := filepath.Join(fp.cfg.FuzzResultsPath, logFileName)
+
+	// Create the log file for writing.
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+	fp.logFile = logFile
+
+	// Ensure the log file is closed at the end.
+	defer func() {
+		if err := fp.logFile.Close(); err != nil {
+			fp.logger.Error("Failed to close log file", "error",
 				err)
-			return
+		}
+	}()
+
+	fp.logger.Info("Failure log initialized", "path", logPath)
+
+	// Write the error logs to the failure log file.
+	if errorLog != "" {
+		_, err = fp.logFile.WriteString(errorLog)
+		if err != nil {
+			return fmt.Errorf("failed to write log line: %w", err)
 		}
 	}
+
+	// If we can't retrieve error data, the error likely originates from a
+	// seed corpus entry in the form:
+	//   "failure while testing seed corpus entry: FuzzFoo/771e938e4458e983"
+	if errorInput == "" {
+		errorInput = fmt.Sprintf("\n\n=== Failing Testcase " +
+			"===\nFailure while testing seed corpus entry. " +
+			"Please ensure your latest changes do not introduce " +
+			"any bugs.")
+	}
+
+	// Write the error data to the log file.
+	_, err = fp.logFile.WriteString(errorInput + "\n")
+	if err != nil {
+		return fmt.Errorf("Failed to write error data: %w", err)
+	}
+	return nil
 }
 
 // parseFailureLine attempts to extract the fuzz target name and input ID
