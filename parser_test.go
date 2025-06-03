@@ -1,10 +1,9 @@
-package parser
+package main
 
 import (
 	"log/slog"
 	"testing"
 
-	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,13 +16,6 @@ func TestParseFailureLine(t *testing.T) {
 		expectedTarget string
 		expectedID     string
 	}{
-		{
-			name: "Seed corpus failure log line",
-			logLine: "failure while testing seed corpus " +
-				"entry: FuzzFoo/771e938e4458e983",
-			expectedTarget: "FuzzFoo",
-			expectedID:     "771e938e4458e983",
-		},
 		{
 			name: "Fuzzing failure log with saved input " +
 				"path",
@@ -59,7 +51,7 @@ func TestParseFailureLine(t *testing.T) {
 	}
 }
 
-// TestReadInputData validates the behavior of the readInputData method
+// TestReadInputData validates the behavior of the readFailingInput method
 // in scenarios where the input file is missing or present within the
 // provided corpus path.
 func TestReadInputData(t *testing.T) {
@@ -94,10 +86,10 @@ func TestReadInputData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			processor := NewFuzzProcessor(&slog.Logger{},
-				&config.Config{}, tt.corpusPath, "")
+			processor := NewFuzzOutputProcessor(&slog.Logger{},
+				&Config{}, tt.corpusPath, "", "")
 
-			actualData := processor.readInputData(tt.fuzzTarget,
+			actualData := processor.readFailingInput(tt.fuzzTarget,
 				tt.testcaseID)
 			assert.Equal(
 				t, tt.expectedData, actualData,

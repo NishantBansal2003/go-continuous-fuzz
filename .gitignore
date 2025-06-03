@@ -1,6 +1,1 @@
-.env
-
-app
-
-out/
-fuzz_results/
+go-continuous-fuzz
