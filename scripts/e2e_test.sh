@@ -8,6 +8,7 @@ shopt -s nullglob
 # =============================================================================
 # Environment variables for fuzzing process configuration
 export PROJECT_SRC_PATH="https://github.com/NishantBansal2003/go-fuzzing-example.git"
+export S3_BUCKET_NAME="test-fuzz-bucket"
 export CORPUS_DIR_PATH="$HOME/corpus"
 export SYNC_FREQUENCY="15m"
 export MAKE_TIMEOUT="20m"
@@ -132,6 +133,12 @@ readonly REQUIRED_PATTERNS=(
   "workerID=3"
   'msg="Per-target fuzz timeout calculated" duration=11m15s'
   'Known crash detected. Please fix the failing testcase.'
+  'Downloaded object'
+  'Uploaded object to S3'
+  "Successfully extracted zip archive."
+  "Directory zipped successfully."
+  "Starting ZIP and upload process"
+  "Successfully zipped and uploaded corpus"
 )
 
 # Verify that worker logs contain expected entries
@@ -142,6 +149,12 @@ for pattern in "${REQUIRED_PATTERNS[@]}"; do
     exit 1
   fi
 done
+
+# Download corpus.zip from LocalStack S3
+aws --endpoint-url=http://localhost:4566 s3 cp s3://test-fuzz-bucket/corpus.zip "$HOME/corpus.zip"
+
+# Unzip corpus.zip into $HOME/corpus
+unzip -o "$HOME/corpus.zip" -d "$HOME/corpus"
 
 # Capture final corpus state
 echo "📈 Recording final corpus state..."

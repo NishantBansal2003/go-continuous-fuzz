@@ -52,6 +52,41 @@ func startFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *Config,
 			os.Exit(1)
 		}
 
+		// Download corpus from S3 bucket
+		s3Client, err := createS3Client(ctx)
+		if err != nil {
+			logger.Error("Failed to create S3 client", "error", err)
+
+			// Perform workspace cleanup before exiting due to the
+			// corpus download error.
+			cleanupWorkspace(logger, cfg)
+			os.Exit(1)
+		}
+
+		corpusZipPath := cfg.CorpusDir + ".zip"
+		empty, err := downloadObject(ctx, s3Client, cfg.S3BucketName,
+			CorpusKey, corpusZipPath, logger)
+		if err != nil {
+			logger.Error("Download failed", "error", err)
+
+			// Perform workspace cleanup before exiting due to the
+			// corpus download error.
+			cleanupWorkspace(logger, cfg)
+			os.Exit(1)
+		}
+
+		if !empty {
+			if err := unzip(corpusZipPath, cfg.CorpusDir,
+				logger); err != nil {
+				logger.Error("Unzip failed", "error", err)
+
+				// Perform workspace cleanup before exiting due
+				// to the corpus download error.
+				cleanupWorkspace(logger, cfg)
+				os.Exit(1)
+			}
+		}
+
 		// 2. Discover fuzz targets.
 		pkgTargets, totalTargets, err := listPkgsFuzzTargets(ctx,
 			logger, cfg)
@@ -92,6 +127,11 @@ func startFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *Config,
 			logger.Info("All workers completed early; cleaning " +
 				"up cycle")
 
+			// Upload the updated corpus back to cloud storage
+			zipUploadCorpus(schedulerCtx, s3Client,
+				cfg.S3BucketName, CorpusKey, cfg.CorpusDir,
+				logger)
+
 			// Cancel the current cycle.
 			cancelCycle()
 			cleanupWorkspace(logger, cfg)
@@ -99,6 +139,11 @@ func startFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *Config,
 		case <-time.After(cycleDuration):
 			logger.Info("Cycle duration complete; initiating " +
 				"cleanup.")
+
+			// Upload the updated corpus back to cloud storage
+			zipUploadCorpus(schedulerCtx, s3Client,
+				cfg.S3BucketName, CorpusKey, cfg.CorpusDir,
+				logger)
 
 			// Cancel the current cycle.
 			cancelCycle()
@@ -112,6 +157,9 @@ func startFuzzCycles(ctx context.Context, logger *slog.Logger, cfg *Config,
 			logger.Info("Shutdown initiated during fuzzing " +
 				"cycle; performing final cleanup.")
 
+			// Since the process is stopeed let's not upload this
+			// corpus coz may be it got corupted.
+			//
 			// Overall application context canceled.
 			cancelCycle()
 

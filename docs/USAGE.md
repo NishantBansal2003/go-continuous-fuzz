@@ -8,7 +8,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
 | -------------------- | --------------------- | --------------------------------------------------------------------------------------- | -------- | ------- |
 | `NUM_WORKERS` | `--num_workers`     | Number of concurrent fuzzing workers                                                  | No       | 1       |
 | `PROJECT_SRC_PATH`   | `--project_src_path`  | Git repo URL of the project to fuzz                                                     | Yes      | —       |
-| `CORPUS_DIR_PATH`   | `--corpus_dir_path`  | Absolute path to corpus directory                                               | Yes      | —       |
+| `S3_BUCKET_NAME`   | `--s3_bucket_name`  | Name of the AWS S3 bucket where the seed corpus will be stored                                               | Yes      | —       |
 | `SYNC_FREQUENCY`          | `--sync_frequency`         | Duration between consecutive fuzzing cycles                                                                | No       | 120s    |
 | `FUZZ_PKGS_PATH`     | `--fuzz_pkgs_path`    | Comma-separated list of Go package path to fuzz, relative to the project root directory | Yes      | —       |
 | `FUZZ_RESULTS_PATH`  | `--fuzz_results_path` | Path to store fuzzing results                                                           | Yes      | —       |
@@ -47,7 +47,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
    ```bash
    export NUM_WORKERS=<number_of_workers>
    export PROJECT_SRC_PATH=<project_repo_url>
-   export CORPUS_DIR_PATH=<path/to/corpus/dir>
+   export S3_BUCKET_NAME=<bucket_name>
    export SYNC_FREQUENCY=<time>
    export FUZZ_PKGS_PATH=<target_package>
    export FUZZ_RESULTS_PATH=<path/to/file>
@@ -57,7 +57,7 @@ You can configure **go-continuous-fuzz** using either environment variables or c
 
    ```bash
      --project_src_path=<project_repo_url>
-     --corpus_dir_path=<path/to/corpus/dir>
+     --s3_bucket_name=<bucket_name>
      --fuzz_results_path=<path/to/file>
      --fuzz_pkgs_path=<path/to/corpus/dir>
      --sync_frequency=<time>

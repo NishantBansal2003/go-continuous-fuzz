@@ -73,7 +73,7 @@ OR
 make docker-run-env \
   NUM_WORKERS=<optional> \
   PROJECT_SRC_PATH=<required> \
-  CORPUS_DIR_PATH=<required> \
+  S3_BUCKET_NAME=<required> \
   SYNC_FREQUENCY=<optional> \
   FUZZ_PKGS_PATH=<required> \
   FUZZ_RESULTS_PATH=<required> \

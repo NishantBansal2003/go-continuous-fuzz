@@ -34,7 +34,7 @@ docker-run-env: docker
 	docker run \
 	  --env NUM_WORKERS="$(NUM_WORKERS)" \
 	  --env PROJECT_SRC_PATH="$(PROJECT_SRC_PATH)" \
-	  --env CORPUS_DIR_PATH="$(CORPUS_DIR_PATH)" \
+	  --env S3_BUCKET_NAME="$(S3_BUCKET_NAME)" \
 	  --env SYNC_FREQUENCY="$(SYNC_FREQUENCY)" \
 	  --env FUZZ_PKGS_PATH="$(FUZZ_PKGS_PATH)" \
 	  --env FUZZ_RESULTS_PATH="$(FUZZ_RESULTS_PATH)" \

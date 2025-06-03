@@ -108,7 +108,7 @@ func executeFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 	pkgPath := filepath.Join(cfg.ProjectDir, pkg)
 
 	// Define the path to store the corpus data generated during fuzzing.
-	corpusPath := filepath.Join(cfg.CorpusDirPath, pkg, "testdata", "fuzz")
+	corpusPath := filepath.Join(cfg.CorpusDir, pkg, "testdata", "fuzz")
 
 	// Define the path where failing corpus inputs might be saved by the
 	// fuzzing process.

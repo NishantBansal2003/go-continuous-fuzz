@@ -16,6 +16,13 @@ const (
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
+
+	// TmpCorpusDir is the temporary directory where the corpus is
+	// located.
+	TmpCorpusDir = "corpus"
+
+	// Corpus key is the name of the object stored in S3
+	CorpusKey = "corpus.zip"
 )
 
 // Config encapsulates all configuration parameters required for the fuzzing
@@ -25,7 +32,7 @@ const (
 type Config struct {
 	ProjectSrcPath string `long:"project_src_path" description:"Git repo URL of the project to fuzz" required:"true" env:"PROJECT_SRC_PATH"`
 
-	CorpusDirPath string `long:"corpus_dir_path" description:"Absolute path to corpus directory" required:"true" env:"CORPUS_DIR_PATH"`
+	S3BucketName string `long:"s3_bucket_name" description:"Name of the AWS S3 bucket where the seed corpus will be stored" required:"true" env:"S3_BUCKET_NAME"`
 
 	FuzzResultsPath string `long:"fuzz_results_path" description:"Path to store fuzzing results" env:"FUZZ_RESULTS_PATH" required:"true"`
 
@@ -38,6 +45,9 @@ type Config struct {
 	// ProjectDir contains the absolute path to the directory where the
 	// project is located.
 	ProjectDir string
+
+	// Absolute path to corpus directory
+	CorpusDir string
 }
 
 // loadConfig parses configuration from environment variables and command-line
@@ -64,7 +74,6 @@ func loadConfig() (*Config, error) {
 	// to directories and files are cleaned and expanded before attempting
 	// to use them later on.
 	cfg.FuzzResultsPath = CleanAndExpandPath(cfg.FuzzResultsPath)
-	cfg.CorpusDirPath = CleanAndExpandPath(cfg.CorpusDirPath)
 
 	// Set the absolute path to the temp project directory.
 	tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
@@ -72,6 +81,7 @@ func loadConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg.ProjectDir = filepath.Join(tmpDirPath, TmpProjectDir)
+	cfg.CorpusDir = filepath.Join(tmpDirPath, TmpCorpusDir)
 
 	return &cfg, nil
 }
