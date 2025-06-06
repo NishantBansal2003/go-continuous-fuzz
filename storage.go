@@ -27,6 +27,7 @@ func createS3Client(ctx context.Context) (*s3.Client, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// TODO: remove this UsePathStyle once CI has s3 storage access
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.UsePathStyle = true
 	})

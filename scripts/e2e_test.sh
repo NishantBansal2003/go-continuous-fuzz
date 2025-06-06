@@ -110,7 +110,7 @@ for target in "${FUZZ_TARGETS[@]}"; do
 done
 
 # Execute fuzzing process
-echo "🔍 Starting fuzzing process (timeout: $SYNC_FREQUENCY)..."
+echo "🔍 Starting fuzzing process (timeout: $MAKE_TIMEOUT)..."
 mkdir -p "$FUZZ_RESULTS_PATH"
 MAKE_LOG="$FUZZ_RESULTS_PATH/make_run.log"
 
@@ -128,17 +128,15 @@ fi
 
 # List of required patterns to check in the log
 readonly REQUIRED_PATTERNS=(
-  "workerID=1"
-  "workerID=2"
-  "workerID=3"
-  'msg="Per-target fuzz timeout calculated" duration=11m15s'
-  'Known crash detected. Please fix the failing testcase.'
   'Downloaded object'
-  'Uploaded object to S3'
-  "Successfully extracted zip archive."
-  "Directory zipped successfully."
-  "Starting ZIP and upload process"
-  "Successfully zipped and uploaded corpus"
+  'Successfully extracted zip archive.'
+  'msg="Per-target fuzz timeout calculated" duration=11m15s'
+  'workerID=1'
+  'workerID=2'
+  'workerID=3'
+  'msg="Known crash detected. Please fix the failing testcase." target=FuzzParseComplex package=parser log_file=parser_FuzzParseComplex_342a5c470d17be27_failure.log'
+  'msg="Known crash detected. Please fix the failing testcase." target=FuzzUnSafeReverseString package=stringutils log_file=stringutils_FuzzUnSafeReverseString_0345b61f9a8eecc9_failure.log'
+  'Successfully zipped and uploaded corpus'
 )
 
 # Verify that worker logs contain expected entries
@@ -192,13 +190,9 @@ done
 # Verify crash reports
 echo "📄 Checking crash reports..."
 required_crashes=(
-  "$FUZZ_RESULTS_PATH/parser_FuzzParseComplex__Vx2ncgXFOpdUg85_failure.log"
+  "$FUZZ_RESULTS_PATH/parser_FuzzParseComplex_342a5c470d17be27_failure.log"
+  "$FUZZ_RESULTS_PATH/stringutils_FuzzUnSafeReverseString_0345b61f9a8eecc9_failure.log"
 )
-
-# Expand glob pattern into matching files
-for file in $FUZZ_RESULTS_PATH/stringutils_FuzzUnSafeReverseString_*_failure.log; do
-  required_crashes+=("$file")
-done
 
 for crash_file in "${required_crashes[@]}"; do
   if [[ ! -f "$crash_file" ]]; then

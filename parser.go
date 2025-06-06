@@ -26,6 +26,19 @@ var (
 		`Failing input written to testdata/fuzz/` +
 			`(?P<target>[^/]+)/(?P<id>[0-9a-f]+)`,
 	)
+
+	// fuzzFileLineRegex matches a stack-trace line indicating a fuzzing
+	// error, capturing the .go file name and line number.
+	//
+	// It matches lines like:
+	//   "stringutils_test.go:17: Reverse produced invalid UTF-8 string"
+	//
+	// Captured groups:
+	//   - "file": the .go file name (e.g., "stringutils_test.go")
+	//   - "line": the line number (e.g., "17")
+	fuzzFileLineRegex = regexp.MustCompile(
+		`\s*(?P<file>[^/]+\.(?:go)):(?P<line>[0-9]+)`,
+	)
 )
 
 // fuzzOutputProcessor handles parsing and logging of fuzzing output streams,
@@ -110,6 +123,15 @@ func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
 		// Write the current line to the failure log.
 		errorLog = errorLog + line + "\n"
 
+		// errorData stores the .go file and line where an error
+		// occurred for deduplication.
+		// Parse the current error line to extract the .go file and line
+		// then append them to errorData.
+		errorFileAndLine := parseFileAndLine(line)
+		if errorFileAndLine != "" {
+			errorData = errorData + errorFileAndLine + "\n"
+		}
+
 		// If error data has already been captured, skip further
 		// extraction.
 		if errorInput != "" {
@@ -128,19 +150,6 @@ func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
 		target, id := parseFailureLine(line)
 		// If either target or ID is empty, skip further processing.
 		if target == "" || id == "" {
-			// errorData stores the error lines for deduplication
-			// purposes. In case of a failure from newly generated
-			// inputs, the error lines stop when we encounter a line
-			// like: "Failing input written to testdata/fuzz/FuzzFoo
-			// /771e938e4458e983". This results in 'target' or 'id'
-			// being non-empty, and we stop collecting errorData at
-			// that point. However, if the failure comes from a seed
-			// corpus entry, 'target' and 'id' will always be empty.
-			// In such cases, we collect all the error data instead.
-			if !strings.Contains(line, "FAIL") {
-				errorData = errorData + line + "\n"
-			}
-
 			continue
 		}
 
@@ -179,6 +188,31 @@ func (fp *fuzzOutputProcessor) processFailureLines(scanner *bufio.Scanner) {
 	}
 }
 
+// parseFileAndLine attempts to extract stack-trace line indicating a fuzzing
+// error, capturing the .go file name and line number.
+func parseFileAndLine(errorLine string) string {
+	// Apply the regular expression to the line to find matches
+	matches := fuzzFileLineRegex.FindStringSubmatch(errorLine)
+
+	// Return empty strings if no match is found
+	if matches == nil {
+		return ""
+	}
+
+	var file, line string
+	// Iterate over the named subexpressions to assign values of file and
+	// line.
+	for i, name := range fuzzFileLineRegex.SubexpNames() {
+		switch name {
+		case "file":
+			file = matches[i]
+		case "line":
+			line = matches[i]
+		}
+	}
+	return file + ":" + line
+}
+
 // isCrashDuplicate checks whether a crash with the same hash has already been
 // logged. Returns true if the crash is already known, false otherwise, along
 // with the generated log file name.
@@ -187,7 +221,7 @@ func (fp *fuzzOutputProcessor) isCrashDuplicate(errorData string) (bool,
 
 	// Compute a short signature hash for the crash to help with
 	// deduplication.
-	crashHash := ComputeSHA256Base64Short(fp.packageName, fp.targetName,
+	crashHash := ComputeSHA256Short(fp.packageName, fp.targetName,
 		errorData)
 
 	// Construct the log file name using the package, target name and crash
