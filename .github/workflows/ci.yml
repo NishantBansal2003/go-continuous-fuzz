@@ -87,6 +87,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Download seed_corpus into test working directory
+        working-directory: ./test-workdir
+        run: |
+          mkdir -p ./corpus
+          curl -L \
+            https://codeload.github.com/go-continuous-fuzz/go-fuzzing-example/tar.gz/main \
+            | tar -xz \
+              --strip-components=2 \
+              -C ./corpus \
+              go-fuzzing-example-main/seed_corpus
+
       - name: Set up Go
         id: setup
         uses: actions/setup-go@v4
