@@ -10,7 +10,7 @@ readonly FUZZ_TIME="3m"
 readonly MAKE_TIMEOUT="5m"
 
 # Use test workspace directory
-readonly TEST_WORKDIR="${pwd}/test-workdir"
+readonly TEST_WORKDIR="$(pwd)/test-workdir"
 readonly PROJECT_DIR="${TEST_WORKDIR}/project"
 readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/corpus"
 readonly FUZZ_RESULTS_PATH="${TEST_WORKDIR}/fuzz_results"
