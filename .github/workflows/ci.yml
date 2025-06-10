@@ -87,6 +87,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Create test working directory
+        run: mkdir -p ./test-workdir
+
       - name: Download seed_corpus into test working directory
         working-directory: ./test-workdir
         run: |
