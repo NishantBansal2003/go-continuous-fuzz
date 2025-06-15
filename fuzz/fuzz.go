@@ -198,10 +198,10 @@ func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 	// cancellation of the context.
 	select {
 	case err := <-errCh:
-		if ctx.Err() != nil {
-			return nil
+		if ctx.Err() == nil {
+			return fmt.Errorf("error waiting for fuzz "+
+				"container: %w", err)
 		}
-		return fmt.Errorf("error waiting for fuzz container: %w", err)
 	case status := <-statusCh:
 		if status.StatusCode != 0 && !isFailing {
 			return fmt.Errorf("fuzz container exited with "+
