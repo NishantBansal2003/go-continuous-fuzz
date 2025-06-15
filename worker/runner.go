@@ -85,7 +85,7 @@ func RunWorker(workerID int, workerCtx context.Context, taskQueue *TaskQueue,
 		// Create a subcontext with timeout for this individual fuzz
 		// target.
 		start := time.Now()
-		taskCtx, cancel := context.WithCancel(workerCtx)
+		taskCtx, cancel := context.WithTimeout(workerCtx, taskTimeout)
 		err := fuzz.ExecuteFuzzTarget(taskCtx, logger, task.PackagePath,
 			task.Target, cfg, taskTimeout, cli)
 		cancel()
