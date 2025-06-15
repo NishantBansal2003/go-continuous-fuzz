@@ -2,10 +2,13 @@ package scheduler
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"time"
 
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/fuzz"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/utils"
@@ -159,13 +162,50 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 	logger.Info("Per-target fuzz timeout calculated", "duration",
 		perTargetTimeout)
 
+	// Create a Docker client for running containers.
+	cli, err := client.NewClientWithOpts(client.FromEnv,
+		client.WithAPIVersionNegotiation())
+	if err != nil {
+		logger.Error("failed to start docker client", "error", err)
+
+		// Perform workspace cleanup before exiting due to the docker
+		// client error.
+		utils.CleanupWorkspace(logger, cfg)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := cli.Close(); err != nil {
+			logger.Error("Failed to stop docker client", "error",
+				err)
+		}
+	}()
+
+	// Pull the Docker image specified by config.ContainerImage
+	// ("golang:1.23.9").
+	reader, err := cli.ImagePull(ctx, config.ContainerImage,
+		image.PullOptions{})
+	if err != nil {
+		logger.Error("failed to pull docker image", "error", err)
+
+		// Perform workspace cleanup before exiting due to the docker
+		// image error.
+		utils.CleanupWorkspace(logger, cfg)
+		os.Exit(1)
+	}
+	defer func() {
+		_ = reader.Close()
+	}()
+	defer func() {
+		_, _ = io.Copy(io.Discard, reader)
+	}()
+
 	// Make sure to cancel all workers if any single worker errors.
 	g, workerCtx := errgroup.WithContext(ctx)
 	for i := 1; i <= cfg.Fuzz.NumWorkers; i++ {
 		workerID := i
 		g.Go(func() error {
 			return worker.RunWorker(workerID, workerCtx, taskQueue,
-				perTargetTimeout, logger, cfg)
+				perTargetTimeout, logger, cfg, cli)
 		})
 	}
 

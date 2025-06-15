@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/fuzz"
 )
@@ -65,7 +66,7 @@ func (q *TaskQueue) Dequeue() (Task, bool) {
 // RunWorker stops and returns that error.
 func RunWorker(workerID int, workerCtx context.Context, taskQueue *TaskQueue,
 	taskTimeout time.Duration, logger *slog.Logger,
-	cfg *config.Config) error {
+	cfg *config.Config, cli *client.Client) error {
 
 	for {
 		task, ok := taskQueue.Dequeue()
@@ -84,9 +85,9 @@ func RunWorker(workerID int, workerCtx context.Context, taskQueue *TaskQueue,
 		// Create a subcontext with timeout for this individual fuzz
 		// target.
 		start := time.Now()
-		taskCtx, cancel := context.WithTimeout(workerCtx, taskTimeout)
+		taskCtx, cancel := context.WithCancel(workerCtx)
 		err := fuzz.ExecuteFuzzTarget(taskCtx, logger, task.PackagePath,
-			task.Target, cfg, taskTimeout)
+			task.Target, cfg, taskTimeout, cli)
 		cancel()
 		elapsed := time.Since(start)
 
@@ -101,7 +102,10 @@ func RunWorker(workerID int, workerCtx context.Context, taskQueue *TaskQueue,
 			"package", task.PackagePath, "target", task.Target,
 		)
 
-		// Only re-enqueue if the task ran for the full timeout.
+		// Only re-enqueue if the task ran for at least the full
+		// timeout. Although elapsed time may include container setup
+		// and startup overhead, even so, if the fuzz target crashes,
+		// the container will likely stop before taskTimeout.
 		if elapsed >= taskTimeout {
 			logger.Info("Re-enqueuing task", "package",
 				task.PackagePath, "target", task.Target,

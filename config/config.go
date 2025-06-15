@@ -22,6 +22,10 @@ const (
 	// ConfigFilename is the filename for the go-continuous-fuzz
 	// configuration file.
 	ConfigFilename = "go-continuous-fuzz.conf"
+
+	// ContainerImage specifies the Docker image to use for running the
+	// container.
+	ContainerImage = "golang:1.23.9"
 )
 
 var (

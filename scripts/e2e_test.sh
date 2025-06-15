@@ -133,8 +133,10 @@ readonly REQUIRED_PATTERNS=(
   'Cycle duration complete; initiating cleanup.'
   'msg="Re-enqueuing task" package=stringutils target=FuzzReverseString'
   'msg="Re-enqueuing task" package=parser target=FuzzEvalExpr'
-  'Fuzzing completed successfully'
-  'gathering baseline coverage'
+  'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzUnSafeReverseString'
+  'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzReverseString'
+  'msg="Fuzzing in Docker completed successfully" package=parser target=FuzzParseComplex'
+  'msg="Fuzzing in Docker completed successfully" package=parser target=FuzzEvalExpr'
   'Shutdown initiated during fuzzing cycle; performing final cleanup.'
   'msg="Worker starting fuzz target" workerID=1'
   'msg="Worker starting fuzz target" workerID=2'
@@ -153,6 +155,7 @@ done
 
 # List of patterns that should NOT be present in the log
 readonly FORBIDDEN_PATTERNS=(
+  'level=ERROR'
   'msg="Worker starting fuzz target" workerID=4'
   'msg="Re-enqueuing task" package=stringutils target=FuzzUnSafeReverseString'
   'msg="Re-enqueuing task" package=parser target=FuzzParseComplex'
