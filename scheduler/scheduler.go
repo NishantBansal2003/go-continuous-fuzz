@@ -195,9 +195,7 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *config.
 	defer func() {
 		_ = reader.Close()
 	}()
-	defer func() {
-		_, _ = io.Copy(io.Discard, reader)
-	}()
+	_, _ = io.Copy(io.Discard, reader)
 
 	// Make sure to cancel all workers if any single worker errors.
 	g, workerCtx := errgroup.WithContext(ctx)
