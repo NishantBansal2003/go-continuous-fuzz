@@ -120,6 +120,9 @@ func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
+		Env: []string{
+			"GOCACHE=/tmp",
+		},
 	}
 	hostConfig := &container.HostConfig{
 		AutoRemove: true,
