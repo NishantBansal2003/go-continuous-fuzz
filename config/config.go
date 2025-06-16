@@ -26,6 +26,14 @@ const (
 	// ContainerImage specifies the Docker image to use for running the
 	// container.
 	ContainerImage = "golang:1.23.9"
+
+	// ContainerProjectPath specifies the root directory for the project
+	// inside the container.
+	ContainerProjectPath = "/app"
+
+	// ContainerCorpusPath specifies the directory inside the container used
+	// for the fuzz corpus.
+	ContainerCorpusPath = "/corpus"
 )
 
 var (

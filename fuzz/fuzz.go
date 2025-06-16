@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/config"
+	"github.com/go-continuous-fuzz/go-continuous-fuzz/container"
 	"github.com/go-continuous-fuzz/go-continuous-fuzz/parser"
 )
 
@@ -87,94 +87,40 @@ func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 	hostCorpusPath := filepath.Join(cfg.Project.CorpusPath, pkg, "testdata",
 		"fuzz")
 
-	// Root directory for the project inside the container.
-	containerProjectRoot := "/app"
-
-	// Path to the package directory inside the container.
-	containerPkgPath := filepath.Join(containerProjectRoot, pkg)
-
-	// Directory inside the container used for the fuzz corpus.
-	containerCorpusPath := "/corpus"
-
 	// Path on the host where failing corpus inputs may be saved by the fuzz
 	// process.
 	maybeFailingCorpusPath := filepath.Join(hostPkgPath, "testdata", "fuzz")
+
+	// Path to the package directory inside the container.
+	containerPkgPath := filepath.Join(config.ContainerProjectPath, pkg)
 
 	// Prepare the arguments for the 'go test' command to run the specific
 	// fuzz target in container.
 	goTestCmd := []string{
 		"go", "test",
 		fmt.Sprintf("-fuzz=^%s$", target),
-		fmt.Sprintf("-test.fuzzcachedir=%s", containerCorpusPath),
+		fmt.Sprintf("-test.fuzzcachedir=%s",
+			config.ContainerCorpusPath),
 		fmt.Sprintf("-fuzztime=%s", fuzzTime),
 		"-parallel=1",
 	}
 
-	// Prepare Docker container configuration and limit resources for the
-	// container.
-	containerConfig := &container.Config{
-		Image:        config.ContainerImage,
-		Cmd:          goTestCmd,
-		WorkingDir:   containerPkgPath,
-		User:         fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		Env: []string{
-			"GOCACHE=/tmp",
-		},
-	}
-	hostConfig := &container.HostConfig{
-		AutoRemove: true,
-		Binds: []string{
-			fmt.Sprintf("%s:%s", cfg.Project.SrcDir,
-				containerProjectRoot),
-			fmt.Sprintf("%s:%s", hostCorpusPath,
-				containerCorpusPath),
-		},
-		Resources: container.Resources{
-			Memory:   2 * 1024 * 1024 * 1024,
-			NanoCPUs: 1_000_000_000,
-		},
-	}
+	// Start the fuzzing container.
+	containerID, logsReader, err := container.ContainerCreateAndStart(ctx,
+		cli, logger, containerPkgPath, cfg.Project.SrcDir,
+		hostCorpusPath, goTestCmd)
 
-	resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil,
-		nil, "")
+	// If we have the container ID, it is possible that an error was
+	// returned but the container is still running. In that case, defer
+	// stopping the container so that it can be automatically removed.
+	if containerID != "" {
+		defer container.StopContainer(cli, logger, containerID)
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil
 		}
-		return fmt.Errorf("failed to create fuzz container: %w", err)
-	}
-	defer func() {
-		if err := cli.ContainerStop(context.Background(), resp.ID,
-			container.StopOptions{}); err != nil {
-			logger.Error("Failed to stop container", "error", err,
-				"containerID", resp.ID)
-		}
-	}()
-
-	if err := cli.ContainerStart(ctx, resp.ID,
-		container.StartOptions{}); err != nil {
-		if ctx.Err() != nil {
-			return nil
-		}
-		return fmt.Errorf("failed to start fuzz container: %w", err)
-	}
-
-	// Attach to logs after starting container
-	logsReader, err := cli.ContainerLogs(ctx, resp.ID,
-		container.LogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     true,
-			Timestamps: false,
-		})
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil
-		}
-		return fmt.Errorf("failed to attach to container logs: %w", err)
+		return fmt.Errorf("error while starting container: %w", err)
 	}
 	defer func() {
 		_ = logsReader.Close()
@@ -182,31 +128,20 @@ func ExecuteFuzzTarget(ctx context.Context, logger *slog.Logger, pkg string,
 
 	// Stream and process the standard output, which may include both stdout
 	// and stderr content.
-	processor := parser.NewFuzzOutputProcessor(
-		logger.With("target", target).With("package", pkg),
-		cfg, maybeFailingCorpusPath, target,
-	)
+	processor := parser.NewFuzzOutputProcessor(logger.With("target",
+		target).With("package", pkg), cfg, maybeFailingCorpusPath,
+		target)
 	isFailing := processor.ProcessFuzzStream(logsReader)
 
-	// Wait for the container to finish.
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID,
-		container.WaitConditionNotRunning)
-
+	// Wait for the the command to finish execution.
+	//
 	// Proceed to return an error only if the fuzz target did not fail
 	// (i.e., no failure was detected during fuzzing), and the command
 	// execution resulted in an error, and the error is not due to a
 	// cancellation of the context.
-	select {
-	case err := <-errCh:
-		if ctx.Err() == nil {
-			return fmt.Errorf("error waiting for fuzz "+
-				"container: %w", err)
-		}
-	case status := <-statusCh:
-		if status.StatusCode != 0 && !isFailing {
-			return fmt.Errorf("fuzz container exited with "+
-				"status %d", status.StatusCode)
-		}
+	err = container.WaitForFuzzContainer(ctx, cli, containerID)
+	if err != nil && ctx.Err() == nil && !isFailing {
+		return fmt.Errorf("fuzz execution failed: %w", err)
 	}
 
 	// If the fuzz target fails, 'go test' saves the failing input in the
