@@ -166,25 +166,20 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 		ContainerGracePeriod)
 	defer cancel()
 
-	c := &Container{
-		ctx:            fuzzCtx,
-		logger:         wg.logger,
-		cli:            wg.cli,
-		cfg:            wg.cfg,
-		workDir:        containerPkgPath,
-		hostCorpusPath: hostCorpusPath,
-		cmd:            goTestCmd,
+	k8sJob, err := NewK8sJob(fuzzCtx, wg.logger, wg.cfg, containerPkgPath, hostCorpusPath, goTestCmd)
+	if err != nil {
+		return err
 	}
 
 	// Start the fuzzing container.
-	containerID, err := c.Start()
+	containerID, err := k8sJob.Start()
 	if err != nil {
 		if fuzzCtx.Err() != nil {
 			return nil
 		}
 		return fmt.Errorf("error while starting container: %w", err)
 	}
-	defer c.Stop(containerID)
+	defer k8sJob.Stop(containerID)
 
 	// Channels to receive either a fuzz failure or a container error.
 	failingChan := make(chan bool, 1)
@@ -192,7 +187,7 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 
 	// Begin processing logs and wait for completion/failure signal in a
 	// goroutine.
-	go c.WaitAndGetLogs(containerID, pkg, target, failingChan, errorChan)
+	go k8sJob.WaitAndGetLogs(containerID, pkg, target, failingChan, errorChan)
 
 	select {
 	case <-fuzzCtx.Done():

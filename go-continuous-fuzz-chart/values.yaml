@@ -1,0 +1,18 @@
+serviceAccount:
+  create: true
+  automount: true
+  name: "go-continuous-fuzz-sa"
+
+# RBAC Role and RoleBinding configuration
+rbac:
+  roleName: go-continuous-fuzz-role
+  roleNamespace: default
+  roleRules:
+    - apiGroups: ["batch"]
+      resources: ["jobs"]
+      verbs: ["create", "get", "list", "watch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods", "pods/log"]
+      verbs: ["get", "list", "watch", "delete"]
+  roleBindingName: go-continuous-fuzz-rolebinding
+  roleBindingNamespace: default

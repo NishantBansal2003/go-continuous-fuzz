@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-storage
+spec:
+  accessModes:
+    - ReadWriteMany # Must support RW access from multiple pods
+  resources:
+    requests:
+      storage: 1Gi

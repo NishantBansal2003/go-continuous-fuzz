@@ -1,0 +1,99 @@
+nishant@nishantbansal:~/Desktop/go-continuous-fuzz$ kubectl logs -f go-continuous-fuzz-runner
+time=2025-07-03T19:26:15.847Z level=ERROR msg="project cleanup failed" error="unlinkat /mnt/shared/project: device or resource busy"
+time=2025-07-03T19:26:15.854Z level=INFO msg="Cloning project repository" url=https://github.com/NishantBansal2003/continuous-fuzzing.git path=/mnt/shared/project
+time=2025-07-03T19:26:17.206Z level=INFO msg="Starting fuzzing scheduler" startTime="Thu, 03 Jul 2025 19:26:17 UTC"
+time=2025-07-03T19:26:17.206Z level=INFO msg="Discovering fuzz targets" package=fuzzing
+time=2025-07-03T19:26:22.179Z level=INFO msg="Per-target fuzz timeout calculated" duration=1m0s
+time=2025-07-03T19:26:22.184Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzParseString timeout=1m0s
+time=2025-07-03T19:26:22.184Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzParseString duration=1m0s
+time=2025-07-03T19:27:42.197Z level=INFO msg="Fuzzing in Docker completed successfully" package=fuzzing target=FuzzParseString
+time=2025-07-03T19:27:42.245Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzParseString
+time=2025-07-03T19:27:42.245Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzStringParser timeout=1m0s
+time=2025-07-03T19:27:42.245Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzStringParser duration=1m0s
+time=2025-07-03T19:28:33.713Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="fuzz: elapsed: 0s, gathering baseline coverage: 0/1 completed"
+time=2025-07-03T19:28:33.713Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="failure while testing seed corpus entry: FuzzStringParser/771e938e4458e983"
+time=2025-07-03T19:28:33.713Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="fuzz: elapsed: 0s, gathering baseline coverage: 0/1 completed"
+time=2025-07-03T19:28:33.713Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="--- FAIL: FuzzStringParser (0.01s)"
+time=2025-07-03T19:28:33.716Z level=INFO msg="Opened failure log for writing" target=FuzzStringParser package=fuzzing path=/root/GCF/FuzzStringParser_failure.log
+time=2025-07-03T19:28:33.716Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    --- FAIL: FuzzStringParser (0.00s)"
+time=2025-07-03T19:28:33.716Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="        parser_test.go:32: Invalid string"
+time=2025-07-03T19:28:33.716Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    "
+time=2025-07-03T19:28:33.716Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message=FAIL
+time=2025-07-03T19:28:33.716Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="exit status 1"
+time=2025-07-03T19:28:33.720Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="FAIL\tfuzzing/fuzzing\t0.014s"
+time=2025-07-03T19:28:33.972Z level=INFO msg="Fuzzing in Docker completed successfully" package=fuzzing target=FuzzStringParser
+time=2025-07-03T19:28:33.994Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzStringParser
+time=2025-07-03T19:28:33.994Z level=INFO msg="No more tasks in queue; stopping worker" workerID=1
+time=2025-07-03T19:28:33.994Z level=INFO msg="All fuzz targets processed successfully in this cycle"
+time=2025-07-03T19:28:33.994Z level=INFO msg="All workers completed early; cleaning up cycle"
+time=2025-07-03T19:28:34.001Z level=ERROR msg="project cleanup failed" error="unlinkat /mnt/shared/project: device or resource busy"
+time=2025-07-03T19:28:34.001Z level=INFO msg="Cloning project repository" url=https://github.com/NishantBansal2003/continuous-fuzzing.git path=/mnt/shared/project
+time=2025-07-03T19:28:34.907Z level=INFO msg="Starting fuzzing scheduler" startTime="Thu, 03 Jul 2025 19:28:34 UTC"
+time=2025-07-03T19:28:34.907Z level=INFO msg="Discovering fuzz targets" package=fuzzing
+time=2025-07-03T19:28:35.602Z level=INFO msg="Per-target fuzz timeout calculated" duration=1m0s
+time=2025-07-03T19:28:35.603Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzParseString timeout=1m0s
+time=2025-07-03T19:28:35.603Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzParseString duration=1m0s
+time=2025-07-03T19:29:00.955Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 0s, gathering baseline coverage: 0/18 completed"
+time=2025-07-03T19:29:00.968Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 0s, gathering baseline coverage: 18/18 completed, now fuzzing with 1 workers"
+time=2025-07-03T19:29:03.957Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 3s, execs: 66060 (22016/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:06.958Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 6s, execs: 139174 (24369/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:09.964Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 9s, execs: 195807 (18872/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:12.956Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 12s, execs: 254122 (19446/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:15.958Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 15s, execs: 314777 (20219/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:18.954Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 18s, execs: 392540 (25918/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:21.955Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 21s, execs: 475924 (27798/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:24.957Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 24s, execs: 554884 (26305/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:27.959Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 27s, execs: 627669 (24277/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:30.957Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 30s, execs: 699483 (23936/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:33.958Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 33s, execs: 767399 (22641/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:36.955Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 36s, execs: 840158 (24252/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:39.961Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 39s, execs: 902940 (20925/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:42.956Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 42s, execs: 966789 (21282/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:45.955Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 45s, execs: 1035724 (22982/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:48.954Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 48s, execs: 1108025 (24100/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:51.956Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 51s, execs: 1183362 (25112/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:54.956Z level=INFO msg="Fuzzer output" target=FuzzParseString package=fuzzing message="fuzz: elapsed: 54s, execs: 1260922 (25851/sec), new interesting: 0 (total: 18)"
+time=2025-07-03T19:29:55.606Z level=INFO msg="Fuzzing in Docker completed successfully" package=fuzzing target=FuzzParseString
+time=2025-07-03T19:29:55.627Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzParseString
+time=2025-07-03T19:29:55.629Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzStringParser timeout=1m0s
+time=2025-07-03T19:29:55.629Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzStringParser duration=1m0s
+time=2025-07-03T19:30:20.570Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="warning: starting with empty corpus"
+time=2025-07-03T19:30:20.571Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="fuzz: elapsed: 0s, execs: 0 (0/sec), new interesting: 0 (total: 0)"
+time=2025-07-03T19:30:20.572Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="fuzz: minimizing 41-byte failing input file"
+time=2025-07-03T19:30:20.576Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="fuzz: elapsed: 0s, minimizing"
+time=2025-07-03T19:30:20.576Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="--- FAIL: FuzzStringParser (0.01s)"
+time=2025-07-03T19:30:20.577Z level=INFO msg="Opened failure log for writing" target=FuzzStringParser package=fuzzing path=/root/GCF/FuzzStringParser_failure.log
+time=2025-07-03T19:30:20.578Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    --- FAIL: FuzzStringParser (0.00s)"
+time=2025-07-03T19:30:20.578Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="        parser_test.go:32: Invalid string"
+time=2025-07-03T19:30:20.578Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    "
+time=2025-07-03T19:30:20.578Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    Failing input written to testdata/fuzz/FuzzStringParser/771e938e4458e983"
+time=2025-07-03T19:30:20.579Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    To re-run:"
+time=2025-07-03T19:30:20.579Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="    go test -run=FuzzStringParser/771e938e4458e983"
+time=2025-07-03T19:30:20.579Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message=FAIL
+time=2025-07-03T19:30:20.581Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="exit status 1"
+time=2025-07-03T19:30:20.581Z level=INFO msg="Fuzzer output" target=FuzzStringParser package=fuzzing message="FAIL\tfuzzing/fuzzing\t0.019s"
+time=2025-07-03T19:30:20.833Z level=INFO msg="Fuzzing in Docker completed successfully" package=fuzzing target=FuzzStringParser
+time=2025-07-03T19:30:20.851Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzStringParser
+time=2025-07-03T19:30:20.851Z level=INFO msg="No more tasks in queue; stopping worker" workerID=1
+time=2025-07-03T19:30:20.852Z level=INFO msg="All fuzz targets processed successfully in this cycle"
+time=2025-07-03T19:30:20.852Z level=INFO msg="All workers completed early; cleaning up cycle"
+time=2025-07-03T19:30:20.858Z level=ERROR msg="project cleanup failed" error="unlinkat /mnt/shared/project: device or resource busy"
+time=2025-07-03T19:30:20.859Z level=INFO msg="Cloning project repository" url=https://github.com/NishantBansal2003/continuous-fuzzing.git path=/mnt/shared/project
+time=2025-07-03T19:30:21.733Z level=INFO msg="Starting fuzzing scheduler" startTime="Thu, 03 Jul 2025 19:30:21 UTC"
+time=2025-07-03T19:30:21.733Z level=INFO msg="Discovering fuzz targets" package=fuzzing
+time=2025-07-03T19:30:22.354Z level=INFO msg="Per-target fuzz timeout calculated" duration=1m0s
+time=2025-07-03T19:30:22.355Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzParseString timeout=1m0s
+time=2025-07-03T19:30:22.355Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzParseString duration=1m0s
+time=2025-07-03T19:30:27.359Z level=INFO msg="Received interrupt signal; shutting down gracefully..."
+time=2025-07-03T19:30:27.368Z level=INFO msg="Shutdown initiated during fuzzing cycle; performing final cleanup."
+time=2025-07-03T19:30:27.368Z level=INFO msg="Fuzzing in Docker completed successfully" package=fuzzing target=FuzzParseString
+time=2025-07-03T19:30:27.397Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzParseString
+time=2025-07-03T19:30:27.397Z level=INFO msg="Worker starting fuzz target" workerID=1 package=fuzzing target=FuzzStringParser timeout=1m0s
+time=2025-07-03T19:30:27.397Z level=INFO msg="Executing fuzz target in Docker" package=fuzzing target=FuzzStringParser duration=1m0s
+time=2025-07-03T19:30:27.433Z level=INFO msg="Worker completed fuzz target" workerID=1 package=fuzzing target=FuzzStringParser
+time=2025-07-03T19:30:27.433Z level=INFO msg="No more tasks in queue; stopping worker" workerID=1
+time=2025-07-03T19:30:27.433Z level=INFO msg="All fuzz targets processed successfully in this cycle"
+time=2025-07-03T19:30:27.433Z level=INFO msg="Program exited."
+time=2025-07-03T19:30:27.437Z level=ERROR msg="workspace cleanup failed" error="unlinkat /mnt/shared/project: device or resource busy"
+make: *** wait: No child processes.  Stop.
+nishant@nishantbansal:~/Desktop/go-continuous-fuzz$ 

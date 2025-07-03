@@ -29,7 +29,7 @@ const (
 
 	// ContainerProjectPath specifies the root directory for the project
 	// inside the container.
-	ContainerProjectPath = "/go-continuous-fuzz-project"
+	ContainerProjectPath = "/mnt/shared/project"
 
 	// ContainerCorpusPath specifies the directory inside the container used
 	// for the fuzz corpus.
@@ -145,11 +145,11 @@ func loadConfig() (*Config, error) {
 	cfg.Project.CorpusPath = CleanAndExpandPath(cfg.Project.CorpusPath)
 
 	// Set the absolute path to the temporary project directory.
-	tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
-	if err != nil {
-		return nil, err
-	}
-	cfg.Project.SrcDir = filepath.Join(tmpDirPath, TmpProjectDir)
+	// tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	cfg.Project.SrcDir = filepath.Join("/mnt/shared", TmpProjectDir)
 
 	return &cfg, nil
 }
