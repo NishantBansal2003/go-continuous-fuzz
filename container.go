@@ -6,159 +6,261 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
-// Container encapsulates the configuration and state needed to manage a Docker
-// container for running fuzzing tasks, including context, logger, Docker client
+// K8sJob encapsulates the configuration and state needed to manage a Kubernetes
+// Job for running fuzzing tasks, including context, logger, Kubernetes client,
 // configuration, working directories, and command.
-type Container struct {
+type K8sJob struct {
 	ctx            context.Context
 	logger         *slog.Logger
-	cli            *client.Client
+	clientset      *kubernetes.Clientset
 	cfg            *Config
 	workDir        string
 	hostCorpusPath string
 	cmd            []string
 }
 
-// Start creates and starts a Docker container with the specified configuration.
-// It returns the container ID if successful, or an error if container creation
-// or startup fails.
-func (c *Container) Start() (string, error) {
-	// Prepare Docker container configuration and limit resources for the
-	// container.
-	containerConfig := &container.Config{
-		Image:        ContainerImage,
-		Cmd:          c.cmd,
-		WorkingDir:   c.workDir,
-		User:         fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		Env: []string{
-			"GOCACHE=/tmp",
-		},
-	}
-	hostConfig := &container.HostConfig{
-		AutoRemove: true,
-		Binds: []string{
-			fmt.Sprintf("%s:%s", c.cfg.Project.SrcDir,
-				ContainerProjectPath),
-			fmt.Sprintf("%s:%s", c.hostCorpusPath,
-				ContainerCorpusPath),
-		},
-		Resources: container.Resources{
-			Memory:   2 * 1024 * 1024 * 1024,
-			NanoCPUs: 1_000_000_000,
-		},
+// NewK8sJob creates a new Kubernetes Job manager with the given configuration.
+func NewK8sJob(ctx context.Context, logger *slog.Logger, cfg *Config, workDir,
+	hostCorpusPath string, cmd []string) (*K8sJob, error) {
+
+	var config *rest.Config
+	var err error
+
+	if config, err = rest.InClusterConfig(); err != nil {
+		return nil, fmt.Errorf("failed to get in-cluster config: %w",
+			err)
 	}
 
-	resp, err := c.cli.ContainerCreate(c.ctx, containerConfig, hostConfig,
-		nil, nil, "")
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return "",
-			fmt.Errorf("failed to create fuzz container: %w", err)
+		return nil, fmt.Errorf("failed to build kubernetes client: %w",
+			err)
 	}
 
-	if err := c.cli.ContainerStart(c.ctx, resp.ID,
-		container.StartOptions{}); err != nil {
-		return "",
-			fmt.Errorf("failed to start fuzz container: %w", err)
-	}
-
-	return resp.ID, nil
+	return &K8sJob{
+		ctx:            ctx,
+		logger:         logger,
+		clientset:      clientset,
+		cfg:            cfg,
+		workDir:        workDir,
+		hostCorpusPath: hostCorpusPath,
+		cmd:            cmd,
+	}, nil
 }
 
-// WaitAndGetLogs listens to the container's log stream, processes fuzz output,
-// and reports either a fuzz crash or the container's exit status.
-//
-// It reads logs until EOF or context cancellation, then:
-// 1. If a fuzz failure is detected, sends true on failingChan.
-// 2. Otherwise, retrieves the container's exit error and sends it on errChan.
-//
-// No values are sent if the context is canceled or times out.
-//
-//	This MUST be run as a goroutine.
-func (c *Container) WaitAndGetLogs(ID, pkg, target string,
-	failingChan chan bool, errChan chan error) {
+// Start creates and starts a Kubernetes Job with the specified configuration.
+// It returns the job name if successful, or an error if job creation fails.
+func (k *K8sJob) Start() (string, error) {
+	// Generate unique job name
+	jobName := fmt.Sprintf("fuzz-job-%d", time.Now().Unix())
 
-	// Acquire the log stream (stdout + stderr) for the running container.
-	logsReader, err := c.cli.ContainerLogs(c.ctx, ID,
-		container.LogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     true,
-			Timestamps: false,
-		})
+	// Define resource requirements
+	memoryLimit := resource.MustParse("2Gi")
+	cpuLimit := resource.MustParse("1")
+
+	// Create job definition
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: jobName,
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:            int32Ptr(0),
+			TTLSecondsAfterFinished: int32Ptr(int32(0)),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					ServiceAccountName: "go-continuous-fuzz-sa",
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  int64Ptr(int64(os.Getuid())),
+						RunAsGroup: int64Ptr(int64(os.Getgid())),
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:       "fuzzer",
+							Image:      ContainerImage,
+							Command:    k.cmd,
+							WorkingDir: k.workDir,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "GOCACHE",
+									Value: "/tmp",
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "project-src",
+									MountPath: ContainerProjectPath,
+								},
+								{
+									Name:      "corpus",
+									MountPath: ContainerCorpusPath,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: memoryLimit,
+									corev1.ResourceCPU:    cpuLimit,
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: memoryLimit,
+									corev1.ResourceCPU:    cpuLimit,
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "project-src",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "shared-storage",
+								},
+							},
+						},
+						{
+							Name: "corpus",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: k.hostCorpusPath,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Create job in Kubernetes
+	_, err := k.clientset.BatchV1().Jobs("default").Create(k.ctx, job,
+		metav1.CreateOptions{})
 	if err != nil {
-		if c.ctx.Err() == nil {
-			errChan <- fmt.Errorf("unable to attach to logs for "+
-				"container %s: %w", ID, err)
-		}
+		return "", fmt.Errorf("failed to create job: %w", err)
+	}
+
+	return jobName, nil
+}
+
+// WaitAndGetLogs watches the job's pod, processes its logs, and reports either
+// a fuzz crash or the container's exit status. This MUST be run as a goroutine.
+func (k *K8sJob) WaitAndGetLogs(jobName, pkg, target string, failingChan chan bool, errChan chan error) {
+	// Wait for pod to be created
+	pod, err := k.waitForPod(jobName)
+	if err != nil {
+		errChan <- fmt.Errorf("error waiting for pod: %w", err)
 		return
 	}
-	defer func() {
-		if err := logsReader.Close(); err != nil {
-			c.logger.Error("error closing logs reader", "container",
-				ID, "error", err)
-		}
-	}()
 
-	// Define the path where failing corpus inputs might be saved by the
-	// fuzzing process.
-	maybeFailingCorpusPath := filepath.Join(c.cfg.Project.SrcDir, pkg,
-		"testdata", "fuzz")
+	// Get logs stream
+	logsReq := k.clientset.CoreV1().Pods("default").GetLogs(pod.Name, &corev1.PodLogOptions{
+		Follow: true,
+	})
 
-	// Process the standard output, which may include both stdout and stderr
-	// content.
-	processor := NewFuzzOutputProcessor(c.logger.With("target", target).
-		With("package", pkg), c.cfg, maybeFailingCorpusPath, target)
-	crashed := processor.processFuzzStream(logsReader)
+	logsStream, err := logsReq.Stream(k.ctx)
+	if err != nil {
+		errChan <- fmt.Errorf("failed to get logs stream: %w", err)
+		return
+	}
+	defer logsStream.Close()
 
-	// Fuzz target crashed: notify via failingChan.
+	// Process logs
+	maybeFailingCorpusPath := filepath.Join(k.cfg.Project.SrcDir, pkg, "testdata", "fuzz")
+	processor := NewFuzzOutputProcessor(
+		k.logger.With("target", target).With("package", pkg),
+		k.cfg,
+		maybeFailingCorpusPath,
+		target,
+	)
+	crashed := processor.processFuzzStream(logsStream)
+
+	// Handle crash detection
 	if crashed {
 		failingChan <- true
 		return
 	}
 
-	// Retrieve the container's exit status and send error (if any) on
-	// errChan.
-	errChan <- c.Wait(ID)
+	// Get final job status
+	errChan <- k.waitForJobCompletion(jobName)
 }
 
-// Wait waits for the specified Docker container to finish execution. It returns
-// an error if the container exits with a non-zero status or if there is an
-// error waiting for the container to finish.
-func (c *Container) Wait(ID string) error {
-	// Wait for the container to finish.
-	statusCh, errCh := c.cli.ContainerWait(c.ctx, ID,
-		container.WaitConditionNotRunning)
+// waitForPod waits for the pod associated with a job to be created and ready
+func (k *K8sJob) waitForPod(jobName string) (*corev1.Pod, error) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-	select {
-	case err := <-errCh:
-		if c.ctx.Err() == nil {
-			return fmt.Errorf("error waiting for fuzz container: "+
-				"%w", err)
-		}
-	case status := <-statusCh:
-		if status.StatusCode != 0 {
-			return fmt.Errorf("fuzz container exited with "+
-				"status %d", status.StatusCode)
+	labelSelector := fmt.Sprintf("job-name=%s", jobName)
+
+	for {
+		select {
+		case <-k.ctx.Done():
+			return nil, k.ctx.Err()
+		case <-ticker.C:
+			pods, err := k.clientset.CoreV1().Pods("default").List(k.ctx, metav1.ListOptions{
+				LabelSelector: labelSelector,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to list pods: %w", err)
+			}
+
+			if len(pods.Items) > 0 {
+				pod := pods.Items[0]
+				if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+					return &pod, nil
+				}
+			}
 		}
 	}
-
-	return nil
 }
 
-// Stop attempts to gracefully stop the specified Docker container by its ID.
-// After a default timeout of 10 seconds, the container is forcefully killed.
-func (c *Container) Stop(ID string) {
-	if err := c.cli.ContainerStop(context.Background(), ID,
-		container.StopOptions{}); err != nil {
-		c.logger.Error("Failed to stop container", "error", err,
-			"containerID", ID)
+// waitForJobCompletion waits for a job to complete and returns its status
+func (k *K8sJob) waitForJobCompletion(jobName string) error {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-k.ctx.Done():
+			return k.ctx.Err()
+		case <-ticker.C:
+			job, err := k.clientset.BatchV1().Jobs("default").Get(k.ctx, jobName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to get job status: %w", err)
+			}
+
+			if job.Status.Succeeded > 0 {
+				return nil
+			}
+			if job.Status.Failed > 0 {
+				return fmt.Errorf("job failed")
+			}
+		}
 	}
 }
+
+// Stop deletes a Kubernetes job and its associated pods
+func (k *K8sJob) Stop(jobName string) {
+	propagationPolicy := metav1.DeletePropagationBackground
+	err := k.clientset.BatchV1().Jobs("default").Delete(context.Background(), jobName, metav1.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	})
+	if err != nil {
+		k.logger.Error("Failed to delete job", "error", err, "jobName",
+			jobName)
+	}
+}
+
+// Helper function for int32 pointer
+func int32Ptr(i int32) *int32 { return &i }
+
+// Helper function for int64 pointer
+func int64Ptr(i int64) *int64 { return &i }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -11,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 	"github.com/go-git/go-git/v5"
 	"golang.org/x/sync/errgroup"
 )
@@ -157,53 +154,13 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 	logger.Info("Per-target fuzz timeout calculated", "duration",
 		perTargetTimeout)
 
-	// Create a Docker client for running containers.
-	cli, err := client.NewClientWithOpts(client.FromEnv,
-		client.WithAPIVersionNegotiation())
-	if err != nil {
-		errChan <- fmt.Errorf("failed to start docker client: %w", err)
-		return
-	}
-	defer func() {
-		if err := cli.Close(); err != nil {
-			logger.Error("Failed to stop docker client", "error",
-				err)
-		}
-	}()
-
-	// Pull the Docker image specified by ContainerImage ("golang:1.23.9").
-	reader, err := cli.ImagePull(ctx, ContainerImage,
-		image.PullOptions{})
-	if err != nil {
-		errChan <- fmt.Errorf("failed to pull docker image: %w", err)
-		return
-	}
-	defer func() {
-		err := reader.Close()
-		if err != nil {
-			logger.Error("Failed to close image logs reader",
-				"error", err)
-		}
-	}()
-
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		logger.Info("Image Pull output", "message", line)
-	}
-	if err := scanner.Err(); err != nil {
-		errChan <- fmt.Errorf("error reading image-pull stream: %w",
-			err)
-		return
-	}
-
 	// Make sure to cancel all workers if any single worker errors.
 	g, workerCtx := errgroup.WithContext(ctx)
 	wg := &WorkerGroup{
 		ctx:         workerCtx,
 		logger:      logger,
 		goGroup:     g,
-		cli:         cli,
+		cli:         nil,
 		cfg:         cfg,
 		taskQueue:   taskQueue,
 		taskTimeout: perTargetTimeout,
