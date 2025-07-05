@@ -12,13 +12,16 @@ readonly MAKE_TIMEOUT="4m"
 # Use test workspace directory
 readonly TEST_WORKDIR=$(mktemp -dt "test-go-continuous-fuzz-XXXXXX")
 readonly PROJECT_DIR="${TEST_WORKDIR}/project"
-readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/corpus"
+readonly CORPUS_DIR_NAME="go-fuzzing-example_corpus"
+readonly CORPUS_ZIP_NAME="${CORPUS_DIR_NAME}.zip"
+readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/${CORPUS_DIR_NAME}"
 readonly FUZZ_RESULTS_PATH="${TEST_WORKDIR}/fuzz_results"
+readonly BUCKET_NAME="test-go-continuous-fuzz-bucket"
 
 # Command-line flags for fuzzing process configuration
 ARGS="\
 --project.src-repo=${PROJECT_SRC_PATH} \
---project.corpus-path=${CORPUS_DIR_PATH} \
+--project.s3-bucket-name=${BUCKET_NAME} \
 --fuzz.sync-frequency=${SYNC_FREQUENCY} \
 --fuzz.results-path=${FUZZ_RESULTS_PATH} \
 --fuzz.num-workers=3 \
@@ -40,7 +43,7 @@ readonly CRASHING_FUZZ_TARGETS=(
 )
 
 # Ensure that resources are cleaned up when the script exits
-trap 'echo "Cleaning up resources..."; rm -rf "${TEST_WORKDIR}"' EXIT
+trap 'echo "Cleaning up resources..."; rm -rf "${TEST_WORKDIR}"; aws s3 rb "s3://${BUCKET_NAME}" --force' EXIT
 
 # ====== FUNCTION DEFINITIONS ======
 
@@ -102,6 +105,15 @@ mkdir -p ${CORPUS_DIR_PATH}
 curl -L https://codeload.github.com/go-continuous-fuzz/go-fuzzing-example/tar.gz/main |
   tar -xz --strip-components=2 -C ${CORPUS_DIR_PATH} go-fuzzing-example-main/seed_corpus
 
+# Create the S3 bucket and upload the zipped corpus
+echo "Creating S3 bucket and uploading corpus..."
+aws s3 mb s3://${BUCKET_NAME}
+(
+  cd "${TEST_WORKDIR}"
+  zip -r ${CORPUS_ZIP_NAME} ${CORPUS_DIR_NAME}
+  aws s3 cp ${CORPUS_ZIP_NAME} s3://${BUCKET_NAME}/${CORPUS_ZIP_NAME}
+)
+
 # Initialize data stores
 declare -A initial_input_counts
 declare -A initial_coverage_metrics
@@ -137,6 +149,8 @@ fi
 # List of required patterns to check in the log
 readonly REQUIRED_PATTERNS=(
   'All workers completed early; cleaning up cycle' # due to grace period
+  'Successfully downloaded and unzipped corpus'
+  'Successfully zipped and uploaded corpus'
   'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzUnSafeReverseString'
   'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzReverseString'
   'msg="Fuzzing in Docker completed successfully" package=parser target=FuzzParseComplex'
@@ -163,6 +177,8 @@ readonly FORBIDDEN_PATTERNS=(
   'level=ERROR'
   'msg="Worker starting fuzz target" workerID=4'
   'Cycle duration complete; initiating cleanup.'
+  'Corpus object not found. Starting with empty corpus.'
+  'warning: starting with empty corpus'
 )
 
 # Verify that worker logs do not contain forbidden entries
@@ -173,6 +189,14 @@ for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
     exit 1
   fi
 done
+
+# Download updated ZIP from S3 and extract into corpus directory
+echo "Downloading updated corpus from S3..."
+(
+  cd "${TEST_WORKDIR}"
+  aws s3 cp s3://${BUCKET_NAME}/${CORPUS_ZIP_NAME} "${CORPUS_ZIP_NAME}"
+  unzip -o "${CORPUS_ZIP_NAME}"
+)
 
 # Capture final corpus state
 echo "Recording final corpus state..."
