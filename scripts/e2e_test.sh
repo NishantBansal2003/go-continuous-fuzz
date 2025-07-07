@@ -160,8 +160,6 @@ MAKE_LOG="${FUZZ_RESULTS_PATH}/make_run.log"
 
 echo "Waiting for pod to be ready..."
 kubectl describe pod go-continuous-fuzz-pod
-kubectl wait --for=condition=Ready pod/go-continuous-fuzz-pod --timeout=60s
-kubectl describe pod go-continuous-fuzz-pod
 
 # Run make run under timeout, capturing stdout+stderr into MAKE_LOG.
 echo "Streaming logs from pod (timeout: ${MAKE_TIMEOUT})..."
