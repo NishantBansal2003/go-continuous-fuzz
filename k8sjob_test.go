@@ -8,16 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
-// TestContainerRace verifies that the Docker client is safe for concurrent use
-// by launching two containers in parallel. It ensures that concurrent
-// operations on a shared Docker client do not cause data races or unexpected
-// errors.
-func TestContainerRace(t *testing.T) {
+// TestKubernetesRace verifies that the k8s client is safe for concurrent use
+// by launching two jobs in parallel. It ensures that concurrent operations on a
+// shared k8s client do not cause data races or unexpected errors.
+func TestKubernetesRace(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -25,20 +24,11 @@ func TestContainerRace(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Set up Docker client for running containers.
-	cli, err := client.NewClientWithOpts(client.FromEnv,
-		client.WithAPIVersionNegotiation())
+	// Set up Kubernetes client for spawning fuzzing jobs.
+	config, err := rest.InClusterConfig()
 	assert.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, cli.Close()) })
-
-	// Pull the golang:1.23.9 image once for both containers.
-	reader, err := cli.ImagePull(ctx, ContainerImage,
-		image.PullOptions{})
+	clientset, err := kubernetes.NewForConfig(config)
 	assert.NoError(t, err)
-
-	_, err = io.Copy(io.Discard, reader)
-	assert.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, reader.Close()) })
 
 	const timeout = 15 * time.Second
 
@@ -50,29 +40,28 @@ func TestContainerRace(t *testing.T) {
 			taskCtx, taskCancel := context.WithTimeout(ctx, timeout)
 			defer taskCancel()
 
-			c := &Container{
-				ctx:    taskCtx,
-				logger: logger,
-				cli:    cli,
+			k8sJob := &K8sJob{
+				ctx:       taskCtx,
+				logger:    logger,
+				clientset: clientset,
 				cfg: &Config{
 					Project: Project{
 						SrcDir: tmpDir,
 					},
 				},
 				workDir:        tmpDir,
-				hostCorpusPath: tmpDir,
 				cmd:            []string{"sleep", "infinity"},
 			}
 
-			id, err := c.Start()
+			id, err := k8sJob.Start()
 			assert.NoError(t, err)
-			defer c.Stop(id)
+			defer k8sJob.Stop(id)
 
 			errorChan := make(chan error, 1)
 
 			// Start processing logs and wait for completion/failure
 			// signal in a goroutine.
-			go c.WaitAndGetLogs(id, "", "", nil, errorChan)
+			go k8sJob.WaitAndGetLogs(id, "", "", nil, errorChan)
 
 			select {
 			case <-taskCtx.Done():

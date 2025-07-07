@@ -10,13 +10,15 @@ readonly SYNC_FREQUENCY="3m"
 readonly MAKE_TIMEOUT="4m"
 
 # Use test workspace directory
-readonly TEST_WORKDIR=$(mktemp -dt "test-go-continuous-fuzz-XXXXXX")
+readonly TEST_WORKDIR="var/lib/go-continuous-fuzz"
 readonly PROJECT_DIR="${TEST_WORKDIR}/project"
 readonly CORPUS_DIR_NAME="go-fuzzing-example_corpus"
 readonly CORPUS_ZIP_NAME="${CORPUS_DIR_NAME}.zip"
 readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/${CORPUS_DIR_NAME}"
 readonly FUZZ_RESULTS_PATH="${TEST_WORKDIR}/fuzz_results"
 readonly BUCKET_NAME="test-go-continuous-fuzz-bucket"
+
+mkdir -p ${TEST_WORKDIR}
 
 # Command-line flags for fuzzing process configuration
 ARGS="\
@@ -42,8 +44,28 @@ readonly CRASHING_FUZZ_TARGETS=(
   "FuzzBuildTree"
 )
 
+# === K8S SETUP ===
+readonly AWS_SECRET_NAME="aws-creds"
+readonly HELM_RELEASE_NAME="go-continuous-fuzz"
+readonly HELM_CHART_PATH="./go-continuous-fuzz-chart"
+readonly K8S_NAMESPACE="default"
+
+make docker
+kind load docker-image go-continuous-fuzz
+
+kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
+kubectl create secret generic ${AWS_SECRET_NAME} \
+  --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+  --from-literal=AWS_REGION="${AWS_REGION}"
+
+helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
+  --namespace "${K8S_NAMESPACE}"
+
+kubectl apply -f ./manifests/
+
 # Ensure that resources are cleaned up when the script exits
-trap 'echo "Cleaning up resources..."; rm -rf "${TEST_WORKDIR}"; aws s3 rb "s3://${BUCKET_NAME}" --force' EXIT
+trap 'echo "Cleaning up resources..."; aws s3 rb "s3://${BUCKET_NAME}" --force' EXIT
 
 # ====== FUNCTION DEFINITIONS ======
 
@@ -134,8 +156,14 @@ echo "Starting fuzzing process (timeout: ${MAKE_TIMEOUT})..."
 mkdir -p "${FUZZ_RESULTS_PATH}"
 MAKE_LOG="${FUZZ_RESULTS_PATH}/make_run.log"
 
+echo "Waiting for pod to be ready..."
+kubectl wait --for=condition=Ready pod/go-continuous-fuzz-pod --timeout=60s
+
 # Run make run under timeout, capturing stdout+stderr into MAKE_LOG.
-timeout -s INT --preserve-status "${MAKE_TIMEOUT}" make run ARGS="${ARGS}" 2>&1 | tee "${MAKE_LOG}"
+echo "Streaming logs from pod (timeout: ${MAKE_TIMEOUT})..."
+kubectl logs -f go-continuous-fuzz-pod &
+
+timeout -s INT --preserve-status "${MAKE_TIMEOUT}" kubectl exec go-continuous-fuzz-pod -- pkill -SIGINT -f go-continuous-fuzz
 status=${PIPESTATUS[0]}
 
 # Handle exit codes:
@@ -145,6 +173,11 @@ if [[ ${status} -ne 130 ]]; then
   echo "❌ Fuzzing exited with unexpected error (status: ${status})."
   exit "${status}"
 fi
+
+mkdir -p ${TEST_WORKDIR}
+
+kubectl logs go-continuous-fuzz-pod >> "${MAKE_LOG}"
+kubectl delete pod go-continuous-fuzz-pod --ignore-not-found
 
 # List of required patterns to check in the log
 readonly REQUIRED_PATTERNS=(

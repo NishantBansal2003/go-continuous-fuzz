@@ -15,6 +15,10 @@ import (
 )
 
 const (
+	// TmpWorkspacePath is the temporary path where the fuzzing workspace is
+	// located.
+	TmpWorkspacePath = "/var/lib/go-continuous-fuzz"
+
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
@@ -158,13 +162,9 @@ func loadConfig() (*Config, error) {
 	}
 	cfg.Project.CorpusKey = fmt.Sprintf("%s_corpus.zip", repo)
 
-	// Set the absolute path to the temporary project directory.
-	tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
-	if err != nil {
-		return nil, err
-	}
-	cfg.Project.SrcDir = filepath.Join(tmpDirPath, TmpProjectDir)
-	cfg.Project.CorpusDir = filepath.Join(tmpDirPath,
+	// Set the absolute path to the temporary workspace directory.
+	cfg.Project.SrcDir = filepath.Join(TmpWorkspacePath, TmpProjectDir)
+	cfg.Project.CorpusDir = filepath.Join(TmpWorkspacePath,
 		fmt.Sprintf("%s_corpus", repo))
 
 	return &cfg, nil
