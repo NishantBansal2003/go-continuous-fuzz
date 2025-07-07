@@ -172,7 +172,7 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 	}
 
 	// Start the fuzzing container.
-	containerID, err := k8sJob.Start()
+	containerID, err := k8sJob.Start(pkg, target)
 	if err != nil {
 		if fuzzCtx.Err() != nil {
 			return nil

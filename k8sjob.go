@@ -31,9 +31,9 @@ type K8sJob struct {
 // It returns the job name if successful, or an error if job creation fails.
 //
 //nolint:lll
-func (k *K8sJob) Start() (string, error) {
+func (k *K8sJob) Start(pkg, target string) (string, error) {
 	// Generate unique job name
-	jobName := fmt.Sprintf("fuzz-job-%d", time.Now().Unix())
+	jobName := fmt.Sprintf("fuzz-job-%s-%s-%d", pkg, target, time.Now().Unix())
 
 	// Create job definition
 	job := &batchv1.Job{

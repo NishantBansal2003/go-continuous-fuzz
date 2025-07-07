@@ -49,11 +49,11 @@ func TestKubernetesRace(t *testing.T) {
 						SrcDir: tmpDir,
 					},
 				},
-				workDir:        tmpDir,
-				cmd:            []string{"sleep", "infinity"},
+				workDir: tmpDir,
+				cmd:     []string{"sleep", "infinity"},
 			}
 
-			id, err := k8sJob.Start()
+			id, err := k8sJob.Start("", "")
 			assert.NoError(t, err)
 			defer k8sJob.Stop(id)
 
