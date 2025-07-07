@@ -53,6 +53,9 @@ readonly K8S_NAMESPACE="default"
 eval $(minikube docker-env)
 make docker
 
+helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
+  --namespace "${K8S_NAMESPACE}"
+
 kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
 kubectl create secret generic ${AWS_SECRET_NAME} \
   --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
@@ -60,12 +63,8 @@ kubectl create secret generic ${AWS_SECRET_NAME} \
   --from-literal=AWS_REGION="${AWS_REGION}" \
   --from-literal=AWS_DEFAULT_REGION="${AWS_REGION}"
 
-helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
-  --namespace "${K8S_NAMESPACE}"
-
 kubectl apply -f ./manifests/pvc.yaml
 kubectl apply -f ./manifests/configmap.yaml
-kubectl apply -f ./manifests/pod.yaml
 
 # Ensure that resources are cleaned up when the script exits
 trap 'echo "Cleaning up resources..."; aws s3 rb "s3://${BUCKET_NAME}" --force' EXIT
@@ -138,6 +137,8 @@ aws s3 mb s3://${BUCKET_NAME}
   zip -r ${CORPUS_ZIP_NAME} ${CORPUS_DIR_NAME}
   aws s3 cp ${CORPUS_ZIP_NAME} s3://${BUCKET_NAME}/${CORPUS_ZIP_NAME}
 )
+
+kubectl apply -f ./manifests/pod.yaml
 
 # Initialize data stores
 declare -A initial_input_counts
