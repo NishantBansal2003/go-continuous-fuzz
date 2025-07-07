@@ -138,8 +138,6 @@ aws s3 mb s3://${BUCKET_NAME}
   aws s3 cp ${CORPUS_ZIP_NAME} s3://${BUCKET_NAME}/${CORPUS_ZIP_NAME}
 )
 
-kubectl apply -f ./manifests/pod.yaml
-
 # Initialize data stores
 declare -A initial_input_counts
 declare -A initial_coverage_metrics
@@ -161,6 +159,7 @@ mkdir -p "${FUZZ_RESULTS_PATH}"
 MAKE_LOG="${FUZZ_RESULTS_PATH}/make_run.log"
 
 echo "Waiting for pod to be ready..."
+kubectl apply -f ./manifests/pod.yaml
 kubectl describe pod go-continuous-fuzz-pod
 
 # Run make run under timeout, capturing stdout+stderr into MAKE_LOG.
@@ -218,6 +217,7 @@ for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
   fi
 done
 
+git clone "${PROJECT_SRC_PATH}" "${PROJECT_DIR}"
 # Download updated ZIP from S3 and extract into corpus directory
 echo "Downloading updated corpus from S3..."
 (
