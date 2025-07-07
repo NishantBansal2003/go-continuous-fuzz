@@ -39,7 +39,6 @@ func run() int {
 		logger.Error("Failed to load configuration", "error", err)
 		return 1
 	}
-	defer cleanupWorkspace(logger, cfg)
 
 	// Create a cancellable context to manage the application's lifecycle.
 	appCtx, cancelApp := context.WithCancel(context.Background())

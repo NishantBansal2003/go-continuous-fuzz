@@ -219,7 +219,6 @@ for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
   fi
 done
 
-git clone "${PROJECT_SRC_PATH}" "${PROJECT_DIR}"
 # Download updated ZIP from S3 and extract into corpus directory
 echo "Downloading updated corpus from S3..."
 (
