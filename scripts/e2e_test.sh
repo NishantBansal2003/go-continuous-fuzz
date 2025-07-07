@@ -164,6 +164,7 @@ kubectl describe pod go-continuous-fuzz-pod
 
 # Run make run under timeout, capturing stdout+stderr into MAKE_LOG.
 echo "Streaming logs from pod (timeout: ${MAKE_TIMEOUT})..."
+sleep 30s
 kubectl logs -f go-continuous-fuzz-pod &
 
 sleep "${MAKE_TIMEOUT}"

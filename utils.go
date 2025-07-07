@@ -26,9 +26,7 @@ func cleanupProjectAndCorpus(logger *slog.Logger, cfg *Config) {
 // cleanupWorkspace deletes the temp directory to reset the workspace state.
 // Any errors encountered during removal are logged, but do not stop execution.
 func cleanupWorkspace(logger *slog.Logger, cfg *Config) {
-	parentDir := filepath.Dir(cfg.Project.SrcDir)
-
-	entries, err := os.ReadDir(parentDir)
+	entries, err := os.ReadDir(TmpWorkspacePath)
 	if err != nil {
 		logger.Error("workspace cleanup failed (could not list "+
 			"contents)", "error", err)
@@ -37,7 +35,8 @@ func cleanupWorkspace(logger *slog.Logger, cfg *Config) {
 
 	for _, entry := range entries {
 		if entry.Name() != "fuzz_results" {
-			entryPath := filepath.Join(parentDir, entry.Name())
+			entryPath := filepath.Join(TmpWorkspacePath,
+				entry.Name())
 			if err := os.RemoveAll(entryPath); err != nil {
 				logger.Error("failed to remove workspace item",
 					"path", entryPath, "error", err)
