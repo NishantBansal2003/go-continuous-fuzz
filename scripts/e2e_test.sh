@@ -50,8 +50,8 @@ readonly HELM_RELEASE_NAME="go-continuous-fuzz"
 readonly HELM_CHART_PATH="./go-continuous-fuzz-chart"
 readonly K8S_NAMESPACE="default"
 
+eval $(minikube docker-env)
 make docker
-kind load docker-image go-continuous-fuzz
 
 kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
 kubectl create secret generic ${AWS_SECRET_NAME} \
@@ -62,7 +62,12 @@ kubectl create secret generic ${AWS_SECRET_NAME} \
 helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
   --namespace "${K8S_NAMESPACE}"
 
-kubectl apply -f ./manifests/
+kubectl apply -f ./manifests/pvc.yaml
+kubectl get pvc go-continuous-fuzz-pvc
+kubectl wait --for=condition=Bound pvc/go-continuous-fuzz-pvc --timeout=30s
+
+kubectl apply -f ./manifests/configmap.yaml
+kubectl apply -f ./manifests/pod.yaml
 
 # Ensure that resources are cleaned up when the script exits
 trap 'echo "Cleaning up resources..."; aws s3 rb "s3://${BUCKET_NAME}" --force' EXIT
@@ -157,7 +162,9 @@ mkdir -p "${FUZZ_RESULTS_PATH}"
 MAKE_LOG="${FUZZ_RESULTS_PATH}/make_run.log"
 
 echo "Waiting for pod to be ready..."
+kubectl describe pod go-continuous-fuzz-pod
 kubectl wait --for=condition=Ready pod/go-continuous-fuzz-pod --timeout=60s
+kubectl describe pod go-continuous-fuzz-pod
 
 # Run make run under timeout, capturing stdout+stderr into MAKE_LOG.
 echo "Streaming logs from pod (timeout: ${MAKE_TIMEOUT})..."
