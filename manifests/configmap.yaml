@@ -11,8 +11,8 @@ data:
 
     [Fuzz Options]
     fuzz.results-path = "var/lib/go-continuous-fuzz/fuzz_results"
-    fuzz.pkgs-path=parser \
-    fuzz.pkgs-path=stringutils \
-    fuzz.pkgs-path=tree"
-    fuzz.sync-frequency = 3m
+    fuzz.pkgs-path = "parser"
+    fuzz.pkgs-path = "stringutils"
+    fuzz.pkgs-path = "tree"
+    fuzz.sync-frequency = "3m"
     fuzz.num-workers = 3
