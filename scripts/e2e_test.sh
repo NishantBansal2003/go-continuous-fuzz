@@ -63,9 +63,6 @@ helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
   --namespace "${K8S_NAMESPACE}"
 
 kubectl apply -f ./manifests/pvc.yaml
-kubectl get pvc go-continuous-fuzz-pvc
-kubectl wait --for=condition=Bound pvc/go-continuous-fuzz-pvc --timeout=30s
-
 kubectl apply -f ./manifests/configmap.yaml
 kubectl apply -f ./manifests/pod.yaml
 
