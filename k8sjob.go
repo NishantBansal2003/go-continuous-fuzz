@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -34,6 +35,7 @@ type K8sJob struct {
 func (k *K8sJob) Start(pkg, target string) (string, error) {
 	// Generate unique job name
 	jobName := fmt.Sprintf("fuzz-job-%s-%s-%d", pkg, target, time.Now().Unix())
+	jobName = strings.ToLower(jobName)
 
 	// Create job definition
 	job := &batchv1.Job{
