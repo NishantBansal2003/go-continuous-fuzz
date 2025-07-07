@@ -170,6 +170,7 @@ kubectl logs -f go-continuous-fuzz-pod &
 sleep "${MAKE_TIMEOUT}"
 
 kubectl exec go-continuous-fuzz-pod -- pkill -SIGINT -f go-continuous-fuzz
+sleep 30s
 
 kubectl logs go-continuous-fuzz-pod >> "${MAKE_LOG}"
 kubectl delete pod go-continuous-fuzz-pod --ignore-not-found
