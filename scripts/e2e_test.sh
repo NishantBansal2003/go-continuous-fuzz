@@ -57,7 +57,8 @@ kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
 kubectl create secret generic ${AWS_SECRET_NAME} \
   --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
   --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-  --from-literal=AWS_REGION="${AWS_REGION}"
+  --from-literal=AWS_REGION="${AWS_REGION}" \
+  --from-literal=AWS_DEFAULT_REGION="${AWS_REGION}"
 
 helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
   --namespace "${K8S_NAMESPACE}"
