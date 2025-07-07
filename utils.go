@@ -36,10 +36,12 @@ func cleanupWorkspace(logger *slog.Logger, cfg *Config) {
 	}
 
 	for _, entry := range entries {
-		entryPath := filepath.Join(parentDir, entry.Name())
-		if err := os.RemoveAll(entryPath); err != nil {
-			logger.Error("failed to remove workspace item",
-				"path", entryPath, "error", err)
+		if entry.Name() != "fuzz_results" {
+			entryPath := filepath.Join(parentDir, entry.Name())
+			if err := os.RemoveAll(entryPath); err != nil {
+				logger.Error("failed to remove workspace item",
+					"path", entryPath, "error", err)
+			}
 		}
 	}
 }

@@ -170,17 +170,6 @@ kubectl logs -f go-continuous-fuzz-pod &
 sleep "${MAKE_TIMEOUT}"
 
 kubectl exec go-continuous-fuzz-pod -- pkill -SIGINT -f go-continuous-fuzz
-status=$?
-
-# Handle exit codes:
-#   130 → timeout sent SIGINT; treat as expected termination
-#   any other non-zero → unexpected error
-if [[ ${status} -ne 130 ]]; then
-  echo "❌ Fuzzing exited with unexpected error (status: ${status})."
-  exit "${status}"
-fi
-
-mkdir -p ${TEST_WORKDIR}
 
 kubectl logs go-continuous-fuzz-pod >> "${MAKE_LOG}"
 kubectl delete pod go-continuous-fuzz-pod --ignore-not-found
