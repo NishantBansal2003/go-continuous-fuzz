@@ -71,11 +71,11 @@ func (k *K8sJob) Start() (string, error) {
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
 									corev1.ResourceCPU:    resource.MustParse("1"),
 								},
 								Limits: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
 									corev1.ResourceCPU:    resource.MustParse("1"),
 								},
 							},
