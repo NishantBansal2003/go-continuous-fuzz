@@ -15,6 +15,10 @@ import (
 )
 
 const (
+	// TmpWorkspacePath is the temporary path where the fuzzing workspace is
+	// located.
+	TmpWorkspacePath = "/var/lib/go-continuous-fuzz"
+
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
@@ -64,11 +68,18 @@ var (
 type Project struct {
 	SrcRepo string `long:"src-repo" description:"Git repo URL of the project to fuzz" required:"true"`
 
-	CorpusPath string `long:"corpus-path" description:"Absolute path to directory where seed corpus is stored" required:"true"`
+	S3BucketName string `long:"s3-bucket-name" description:"Name of the S3 bucket where the seed corpus will be stored" required:"true"`
 
 	// SrcDir contains the absolute path to the directory where the project
 	// to fuzz is located.
 	SrcDir string
+
+	// CorpusDir contains the absolute path to the directory where the seed
+	// corpus is located
+	CorpusDir string
+
+	// CorpusKey is the S3 object key under which the corpus is stored.
+	CorpusKey string
 }
 
 // Fuzz defines all fuzzing-related flags and defaults, including where to
@@ -142,14 +153,19 @@ func loadConfig() (*Config, error) {
 	// to directories and files are cleaned and expanded before attempting
 	// to use them later on.
 	cfg.Fuzz.ResultsPath = CleanAndExpandPath(cfg.Fuzz.ResultsPath)
-	cfg.Project.CorpusPath = CleanAndExpandPath(cfg.Project.CorpusPath)
 
-	// Set the absolute path to the temporary project directory.
-	tmpDirPath, err := os.MkdirTemp("", "go-continuous-fuzz-")
+	// Extract the repository name from the source URL and use it to set the
+	// corpus key and corpus directory.
+	repo, err := extractRepo(cfg.Project.SrcRepo)
 	if err != nil {
 		return nil, err
 	}
-	cfg.Project.SrcDir = filepath.Join(tmpDirPath, TmpProjectDir)
+	cfg.Project.CorpusKey = fmt.Sprintf("%s_corpus.zip", repo)
+
+	// Set the absolute path to the temporary workspace directory.
+	cfg.Project.SrcDir = filepath.Join(TmpWorkspacePath, TmpProjectDir)
+	cfg.Project.CorpusDir = filepath.Join(TmpWorkspacePath,
+		fmt.Sprintf("%s_corpus", repo))
 
 	return &cfg, nil
 }

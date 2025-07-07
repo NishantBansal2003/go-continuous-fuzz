@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Task represents a single fuzz target job, containing the package path and the
@@ -66,13 +66,13 @@ func (q *TaskQueue) Dequeue() (Task, bool) {
 // WorkerGroup manages a group of fuzzing workers, their context, logger, Docker
 // client, configuration, shared task queue, and per-task timeout.
 type WorkerGroup struct {
-	ctx         context.Context
-	logger      *slog.Logger
-	goGroup     *errgroup.Group
-	cli         *client.Client
-	cfg         *Config
-	taskQueue   *TaskQueue
-	taskTimeout time.Duration
+	ctx          context.Context
+	logger       *slog.Logger
+	goGroup      *errgroup.Group
+	k8sClientSet *kubernetes.Clientset
+	cfg          *Config
+	taskQueue    *TaskQueue
+	taskTimeout  time.Duration
 }
 
 // WorkersStartAndWait starts the specified number of workers and waits for all
@@ -135,29 +135,25 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 		"target", target, "duration", wg.taskTimeout)
 
 	// Construct the absolute path to the package directory within the
-	// temporary project directory on the host machine.
-	hostPkgPath := filepath.Join(wg.cfg.Project.SrcDir, pkg)
+	// temporary project directory.
+	pkgPath := filepath.Join(wg.cfg.Project.SrcDir, pkg)
 
-	// Define the path to store the corpus data generated during fuzzing on
-	// the host machine.
-	hostCorpusPath := filepath.Join(wg.cfg.Project.CorpusPath, pkg,
+	// Define the path to store the corpus data generated during fuzzing.
+	corpusPath := filepath.Join(wg.cfg.Project.CorpusDir, pkg,
 		"testdata", "fuzz")
 
 	// Ensure that the corpus directory on the host machine exists to avoid
 	// permission errors when running the container as a non-root user.
-	if err := EnsureDirExists(hostCorpusPath); err != nil {
+	if err := EnsureDirExists(corpusPath); err != nil {
 		return err
 	}
-
-	// Path to the package directory inside the container.
-	containerPkgPath := filepath.Join(ContainerProjectPath, pkg)
 
 	// Prepare the arguments for the 'go test' command to run the specific
 	// fuzz target in container.
 	goTestCmd := []string{
 		"go", "test",
 		fmt.Sprintf("-fuzz=^%s$", target),
-		fmt.Sprintf("-test.fuzzcachedir=%s", ContainerCorpusPath),
+		fmt.Sprintf("-test.fuzzcachedir=%s", corpusPath),
 		"-parallel=1",
 	}
 
@@ -166,25 +162,24 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 		ContainerGracePeriod)
 	defer cancel()
 
-	c := &Container{
-		ctx:            fuzzCtx,
-		logger:         wg.logger,
-		cli:            wg.cli,
-		cfg:            wg.cfg,
-		workDir:        containerPkgPath,
-		hostCorpusPath: hostCorpusPath,
-		cmd:            goTestCmd,
+	k8sJob := &K8sJob{
+		ctx:       fuzzCtx,
+		logger:    wg.logger,
+		clientset: wg.k8sClientSet,
+		cfg:       wg.cfg,
+		workDir:   pkgPath,
+		cmd:       goTestCmd,
 	}
 
 	// Start the fuzzing container.
-	containerID, err := c.Start()
+	containerID, err := k8sJob.Start(pkg, target)
 	if err != nil {
 		if fuzzCtx.Err() != nil {
 			return nil
 		}
 		return fmt.Errorf("error while starting container: %w", err)
 	}
-	defer c.Stop(containerID)
+	defer k8sJob.Stop(containerID)
 
 	// Channels to receive either a fuzz failure or a container error.
 	failingChan := make(chan bool, 1)
@@ -192,7 +187,8 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 
 	// Begin processing logs and wait for completion/failure signal in a
 	// goroutine.
-	go c.WaitAndGetLogs(containerID, pkg, target, failingChan, errorChan)
+	go k8sJob.WaitAndGetLogs(containerID, pkg, target, failingChan,
+		errorChan)
 
 	select {
 	case <-fuzzCtx.Done():
@@ -210,8 +206,8 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 		// prevent these saved inputs from causing subsequent test runs
 		// to fail (especially when running other fuzz targets), we
 		// remove the testdata directory to clean up the failing inputs.
-		failingInputPath := filepath.Join(hostPkgPath, "testdata",
-			"fuzz", target)
+		failingInputPath := filepath.Join(pkgPath, "testdata", "fuzz",
+			target)
 		if err := os.RemoveAll(failingInputPath); err != nil {
 			return fmt.Errorf("failing input cleanup failed: %w",
 				err)
