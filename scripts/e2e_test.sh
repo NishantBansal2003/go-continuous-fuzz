@@ -165,8 +165,10 @@ kubectl describe pod go-continuous-fuzz-pod
 echo "Streaming logs from pod (timeout: ${MAKE_TIMEOUT})..."
 kubectl logs -f go-continuous-fuzz-pod &
 
-timeout -s INT --preserve-status "${MAKE_TIMEOUT}" kubectl exec go-continuous-fuzz-pod -- pkill -SIGINT -f go-continuous-fuzz
-status=${PIPESTATUS[0]}
+sleep "${MAKE_TIMEOUT}"
+
+kubectl exec go-continuous-fuzz-pod -- pkill -SIGINT -f go-continuous-fuzz
+status=$?
 
 # Handle exit codes:
 #   130 → timeout sent SIGINT; treat as expected termination
