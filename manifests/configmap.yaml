@@ -10,7 +10,7 @@ data:
     project.s3-bucket-name = "test-go-continuous-fuzz-bucket"
 
     [Fuzz Options]
-    fuzz.results-path = "var/lib/go-continuous-fuzz/fuzz_results"
+    fuzz.results-path = "/var/lib/go-continuous-fuzz/fuzz_results"
     fuzz.pkgs-path = "parser"
     fuzz.pkgs-path = "stringutils"
     fuzz.pkgs-path = "tree"

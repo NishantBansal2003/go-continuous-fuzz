@@ -10,7 +10,7 @@ readonly SYNC_FREQUENCY="3m"
 readonly MAKE_TIMEOUT="4m"
 
 # Use test workspace directory
-readonly TEST_WORKDIR="var/lib/go-continuous-fuzz"
+readonly TEST_WORKDIR="/var/lib/go-continuous-fuzz"
 readonly PROJECT_DIR="${TEST_WORKDIR}/project"
 readonly CORPUS_DIR_NAME="go-fuzzing-example_corpus"
 readonly CORPUS_ZIP_NAME="${CORPUS_DIR_NAME}.zip"
