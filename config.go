@@ -71,13 +71,13 @@ type Project struct {
 	SrcDir string
 }
 
-// Fuzz defines all fuzzing-related flags and defaults, including where to
-// write results, which packages to fuzz, timeout settings, and concurrency
-// parameters.
+// Fuzz defines all fuzzing-related flags and defaults, including the Git
+// repository URLs of the project where issues will be opened, which packages to
+// fuzz, timeout settings, and concurrency parameters.
 //
 //nolint:lll
 type Fuzz struct {
-	ResultsPath string `long:"results-path" description:"Path to store fuzzing results" required:"true"`
+	CrashRepo string `long:"crash-repo" description:"Git repository URL where issues are created for fuzz crashes" required:"true"`
 
 	PkgsPath []string `long:"pkgs-path" description:"List of package paths to fuzz" required:"true"`
 
@@ -141,7 +141,6 @@ func loadConfig() (*Config, error) {
 	// As soon as we're done parsing configuration options, ensure all paths
 	// to directories and files are cleaned and expanded before attempting
 	// to use them later on.
-	cfg.Fuzz.ResultsPath = CleanAndExpandPath(cfg.Fuzz.ResultsPath)
 	cfg.Project.CorpusPath = CleanAndExpandPath(cfg.Project.CorpusPath)
 
 	// Set the absolute path to the temporary project directory.
