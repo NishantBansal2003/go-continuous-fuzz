@@ -221,5 +221,9 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 	wg.logger.Info("Fuzzing in Docker completed successfully", "package",
 		pkg, "target", target)
 
+	if err := updateReport(pkg, target, wg.cfg); err != nil {
+		return err
+	}
+
 	return nil
 }
