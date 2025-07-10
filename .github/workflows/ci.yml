@@ -82,6 +82,8 @@ jobs:
   e2e-test:
     name: Run E2E Tests
     runs-on: ubuntu-latest
+    env:
+      GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GO_FUZZING_EXAMPLE_AUTH_TOKEN }}
 
     steps:
       - name: Checkout code
