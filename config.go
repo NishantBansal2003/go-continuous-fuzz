@@ -173,7 +173,7 @@ func loadConfig() (*Config, error) {
 	cfg.Project.SrcDir = filepath.Join(tmpDirPath, TmpProjectDir)
 	cfg.Project.CorpusDir = filepath.Join(tmpDirPath,
 		fmt.Sprintf("%s_corpus", repo))
-	cfg.Project.ReportDir = filepath.Join(cfg.Fuzz.ResultsPath, TmpReportDir)
+	cfg.Project.ReportDir = filepath.Join(tmpDirPath, TmpReportDir)
 
 	return &cfg, nil
 }
