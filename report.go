@@ -12,142 +12,168 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strings"
 	"time"
 )
 
+// MasterEntry represents an entry in the master index HTML file.
 type MasterEntry struct {
 	PkgPath  string
 	Target   string
 	LinkFile string
 }
 
+// TargetHistory stores the historical coverage data for a fuzzing target.
 type TargetHistory struct {
 	Date       string
 	Coverage   string
 	ReportPath string
 }
 
+// TargetState keeps track of registered fuzzing targets.
 type TargetState struct {
 	PkgPath string
 	Target  string
 }
 
-// load or initialize state.json
-func loadMasterState(path string) ([]TargetState, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+// loadMasterState loads the master state from a JSON file at the given path.
+// If the file does not exist, it returns an empty slice.
+func loadMasterState(statePath string) ([]TargetState, error) {
+	if _, err := os.Stat(statePath); os.IsNotExist(err) {
 		return nil, nil
 	}
-	b, err := os.ReadFile(path)
+	stateData, err := os.ReadFile(statePath)
 	if err != nil {
 		return nil, err
 	}
-	var st []TargetState
-	if err := json.Unmarshal(b, &st); err != nil {
+	var states []TargetState
+	if err := json.Unmarshal(stateData, &states); err != nil {
 		return nil, err
 	}
-	return st, nil
+	return states, nil
 }
 
-func saveMasterState(path string, st []TargetState) error {
-	b, _ := json.MarshalIndent(st, "", "  ")
-	return os.WriteFile(path, b, 0644)
+// saveMasterState saves the master state to a JSON file at the given path.
+func saveMasterState(statePath string, states []TargetState) error {
+	stateData, err := json.MarshalIndent(states, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(statePath, stateData, 0644)
 }
 
-func addToMaster(pkgPath, target string, projectName string, cfg *Config) error {
+// addToMaster adds a new package and target to the master list, regenerates the
+// index.html report, and persists state changes.
+func addToMaster(pkgPath, target string, projectName string, cfg *Config,
+) error {
+
 	statePath := filepath.Join(cfg.Project.ReportDir, "state.json")
-	state, err := loadMasterState(statePath)
+	states, err := loadMasterState(statePath)
 	if err != nil {
 		return err
 	}
-	// check if exists
-	for _, s := range state {
+
+	// Check for existing target
+	for _, s := range states {
 		if s.PkgPath == pkgPath && s.Target == target {
-			return nil // already in master
+			// Already registered
+			return nil
 		}
 	}
 
-	// append
-	state = append(state, TargetState{pkgPath, target})
-	// Sort by PkgPath, then by Target
-	sort.Slice(state, func(i, j int) bool {
-		if state[i].PkgPath == state[j].PkgPath {
-			return state[i].Target < state[j].Target
+	// Append new target
+	states = append(states, TargetState{pkgPath, target})
+	sort.Slice(states, func(i, j int) bool {
+		if states[i].PkgPath == states[j].PkgPath {
+			return states[i].Target < states[j].Target
 		}
-		return state[i].PkgPath < state[j].PkgPath
+		return states[i].PkgPath < states[j].PkgPath
 	})
-	if err := saveMasterState(statePath, state); err != nil {
+
+	if err := saveMasterState(statePath, states); err != nil {
 		return err
 	}
 
-	// regenerate index.html
-	entries := make([]MasterEntry, len(state))
-	for i, s := range state {
-		linkFile := fmt.Sprintf("%s_%s.html",
-			filepath.Base(s.PkgPath), s.Target)
+	// Generate index entries (index.html)
+	entries := make([]MasterEntry, len(states))
+	for i, s := range states {
+		linkFile := fmt.Sprintf("%s_%s.html", s.PkgPath, s.Target)
 		entries[i] = MasterEntry{s.PkgPath, s.Target, linkFile}
 	}
+
+	// Render master index
 	tmpl := template.Must(template.New("master").Parse(masterHTML))
-	f, err := os.Create(filepath.Join(cfg.Project.ReportDir, "index.html"))
+	indexFilePath := filepath.Join(cfg.Project.ReportDir, "index.html")
+	indexFile, err := os.Create(indexFilePath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer indexFile.Close()
 
-	return tmpl.Execute(f, struct {
+	return tmpl.Execute(indexFile, struct {
 		ProjectName string
 		Entries     []MasterEntry
-	}{
-		ProjectName: projectName,
-		Entries:     entries,
-	})
+	}{projectName, entries})
 }
 
-// update a specific target’s history and HTML
+// updateTarget updates the HTML report and JSON history file for a given
+// fuzzing target.
 func updateTarget(pkgPath, target, coverage string, cfg *Config) error {
-	// build file names
-	base := fmt.Sprintf("%s_%s", filepath.Base(pkgPath), target)
-	jsonPath := filepath.Join(cfg.Project.ReportDir, "targets", base+".json")
-	htmlPath := filepath.Join(cfg.Project.ReportDir, "targets", base+".html")
+	// Generate filenames
+	baseName := fmt.Sprintf("%s_%s", pkgPath, target)
+	jsonPath := filepath.Join(cfg.Project.ReportDir, "targets", baseName+
+		".json")
+	htmlPath := filepath.Join(cfg.Project.ReportDir, "targets", baseName+
+		".html")
 
-	// load existing history
-	var hist []TargetHistory
-	if b, err := os.ReadFile(jsonPath); err == nil {
-		json.Unmarshal(b, &hist)
+	// Load existing history
+	var history []TargetHistory
+	if historyData, err := os.ReadFile(jsonPath); err == nil {
+		if err := json.Unmarshal(historyData, &history); err != nil {
+			return err
+		}
 	}
-	today := time.Now().Format("2006-01-02_15-04")
-	reportHTMLPath := filepath.Join(filepath.Base(pkgPath), target,
-		today+".html")
 
-	// only prepend if no entry for today
-	// if len(hist) == 0 || hist[0].Date != today {
-	newEntry := TargetHistory{
-		Date:       today,
-		Coverage:   coverage,
-		ReportPath: reportHTMLPath,
+	// Create new entry if needed
+	currentDate := time.Now().Format("2025-01-02")
+	reportHTMLPath := filepath.Join(pkgPath, target, currentDate+".html")
+
+	// Prepend a new entry only if there is no existing entry for the
+	// current date
+	if len(history) == 0 || history[0].Date != currentDate {
+		newEntry := TargetHistory{
+			Date:       currentDate,
+			Coverage:   coverage,
+			ReportPath: reportHTMLPath,
+		}
+		history = append([]TargetHistory{newEntry}, history...)
+
+		// Save updated JSON history
+		historyData, err := json.MarshalIndent(history, "", "  ")
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(jsonPath, historyData, 0644); err !=
+			nil {
+
+			return err
+		}
 	}
-	hist = append(
-		[]TargetHistory{newEntry},
-		hist...,
-	)
-	// save JSON
-	b, _ := json.MarshalIndent(hist, "", "  ")
-	os.WriteFile(jsonPath, b, 0644)
-	// }
 
-	// regenerate target HTML
+	// Render target history HTML
 	tmpl := template.Must(template.New("target").Parse(targetHTML))
-	f, err := os.Create(htmlPath)
+	targetFile, err := os.Create(htmlPath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return tmpl.Execute(f, struct {
+	defer targetFile.Close()
+
+	return tmpl.Execute(targetFile, struct {
 		Target  string
 		History []TargetHistory
-	}{target, hist})
+	}{target, history})
 }
 
+// updateReport runs tests, captures coverage, and updates reports for a target.
 func updateReport(pkg, target string, cfg *Config) error {
 	ctx := context.Background()
 
@@ -155,88 +181,78 @@ func updateReport(pkg, target string, cfg *Config) error {
 	// temporary project directory.
 	pkgPath := filepath.Join(cfg.Project.SrcDir, pkg)
 
-	// Define the path to store the corpus data generated during fuzzing.
+	// Prepare corpus directories
 	corpusPath := filepath.Join(cfg.Project.CorpusPath, pkg, "testdata",
 		"fuzz", target)
-
 	pkgCorpusPath := filepath.Join(pkgPath, "testdata", "fuzz", target)
-	EnsureDirExists(pkgCorpusPath)
 
-	copyCorpusFiles(corpusPath, pkgCorpusPath)
+	if err := copyCorpusFiles(corpusPath, pkgCorpusPath); err != nil {
+		return fmt.Errorf("corpus copy failed: %w", err)
+	}
 
-	args := []string{
-		"test",
+	// Run tests with coverage
+	testCmd := exec.CommandContext(ctx, "go", "test",
 		fmt.Sprintf("-run=^%s$", target),
 		"-coverprofile=coverage.out",
 		"-covermode=count",
+	)
+	testCmd.Dir = pkgPath
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	testCmd.Stdout = &stdoutBuf
+	testCmd.Stderr = &stderrBuf
+
+	if err := testCmd.Run(); err != nil && ctx.Err() == nil {
+		return fmt.Errorf("go test failed: %w\nStderr: %s", err,
+			stderrBuf.String())
 	}
 
-	// Initialize the 'go test' command with the specified arguments and
-	// context.
-	cmd := exec.CommandContext(ctx, "go", args...)
-	// Set the working directory for the command.
-	cmd.Dir = pkgPath
-
-	// Initialize buffers to capture standard output and standard error from
-	// the command execution.
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	// Execute the command and check for errors, when the context wasn't
-	// canceled.
-	if err := cmd.Run(); err != nil && ctx.Err() == nil {
-		return fmt.Errorf("go test failed for %q: %w (output: %q)",
-			pkg, err, strings.TrimSpace(stderr.String()))
-	}
-
-	// Extract coverage from stdout
-	output := stdout.String()
-	re := regexp.MustCompile(`coverage:\s+([\d.]+)%`)
-	matches := re.FindStringSubmatch(output)
-
+	// Extract coverage percentage
+	output := stdoutBuf.String()
+	coverageRe := regexp.MustCompile(`coverage:\s+([\d.]+)%`)
+	matches := coverageRe.FindStringSubmatch(output)
 	if len(matches) < 2 {
-		return fmt.Errorf("coverage percentage not found in output:\n%s",
-			output)
+		return fmt.Errorf("coverage not found in output:\n%s", output)
+	}
+	coveragePct := matches[1]
+
+	// Generate coverage report
+	targetReportDir := filepath.Join(cfg.Project.ReportDir, "targets",
+		pkgPath, target)
+	if err := EnsureDirExists(targetReportDir); err != nil {
+		return fmt.Errorf("report dir creation failed: %w", err)
 	}
 
-	coverage := matches[1]
-	EnsureDirExists(filepath.Join(cfg.Project.ReportDir,
-		"targets", pkg, target))
-
-	args = []string{
-		"tool",
-		"cover",
+	reportPath := filepath.Join(targetReportDir,
+		time.Now().Format("2025-01-02")+".html")
+	coverCmd := exec.CommandContext(ctx, "go", "tool", "cover",
 		"-html=coverage.out",
-		"-o",
-		fmt.Sprintf("%s", filepath.Join(cfg.Project.ReportDir,
-			"targets", pkg, target,
-			time.Now().Format("2006-01-02_15-04")+".html")),
-	}
-	// Initialize the 'go test' command with the specified arguments and
-	// context.
-	cmd = exec.CommandContext(ctx, "go", args...)
-	// Set the working directory for the command.
-	cmd.Dir = pkgPath
+		"-o", reportPath,
+	)
+	coverCmd.Dir = pkgPath
+	coverCmd.Stdout = &stdoutBuf
+	coverCmd.Stderr = &stderrBuf
 
-	// Execute the command and check for errors, when the context wasn't
-	// canceled.
-	if err := cmd.Run(); err != nil && ctx.Err() == nil {
-		return fmt.Errorf("go test failed for %q: %w (output: %q)",
-			pkg, err, strings.TrimSpace(stderr.String()))
+	if err := coverCmd.Run(); err != nil && ctx.Err() == nil {
+		return fmt.Errorf("go cover failed: %w\nStderr: %s", err,
+			stderrBuf.String())
 	}
 
-	if err := addToMaster(pkg, target, "Go Fuzzing example", cfg); err != nil {
-		return err
+	// Update indexes
+	if err := addToMaster(pkg, target, "Go Fuzzing example",
+		cfg); err != nil {
+
+		return fmt.Errorf("index update failed: %w", err)
 	}
 
-	if err := updateTarget(pkg, target, coverage, cfg); err != nil {
-		return err
+	if err := updateTarget(pkg, target, coveragePct, cfg); err != nil {
+		return fmt.Errorf("target history update failed: %w", err)
 	}
 
 	return nil
 }
 
+// copyCorpusFiles copies corpus files from source to destination directory.
 func copyCorpusFiles(srcDir, dstDir string) error {
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
@@ -244,13 +260,13 @@ func copyCorpusFiles(srcDir, dstDir string) error {
 	}
 
 	// Ensure destination directory exists
-	if err := os.MkdirAll(dstDir, 0755); err != nil {
+	if err := EnsureDirExists(dstDir); err != nil {
 		return err
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
-			continue // Skip subdirectories (if any accidentally exist)
+			continue
 		}
 
 		srcPath := filepath.Join(srcDir, entry.Name())
@@ -264,6 +280,7 @@ func copyCorpusFiles(srcDir, dstDir string) error {
 	return nil
 }
 
+// copyFile copies a single file from source to destination path.
 func copyFile(srcFile, dstFile string) error {
 	src, err := os.Open(srcFile)
 	if err != nil {
