@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/bash
+#!/bin/bash
 
 set -eux
 
@@ -218,8 +218,10 @@ echo "Downloading updated corpus from S3..."
 
 # Download coverage reports from S3
 echo "Downloading coverage reports from S3..."
+mkdir -p "${REPORT_DIR}"
 aws s3 cp s3://${BUCKET_NAME}/index.html "${REPORT_DIR}"
 aws s3 cp s3://${BUCKET_NAME}/state.json "${REPORT_DIR}"
+mkdir -p "${REPORT_DIR}/targets/"
 aws s3 cp s3://${BUCKET_NAME}/targets/ "${REPORT_DIR}/targets/" --recursive
 
 # Capture final corpus state

@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main]
 env:
-  ROLE_TO_ASSUME: "arn:aws:iam::${account_id}:role/${role_name}"
-  AWS_REGION: "us-east-1"
+  ROLE_TO_ASSUME: "arn:aws:iam::026900513894:role/github_actions"
+  AWS_REGION: "ap-south-1"
 
 permissions:
   id-token: write
