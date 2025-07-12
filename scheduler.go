@@ -65,6 +65,11 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 				"aborting scheduler")
 			return err
 		}
+		if err := s3cs.downloadFromBucket(cfg.Project.ReportDir); err != nil {
+			logger.Error("Failed to download reports; " +
+				"aborting scheduler")
+			return err
+		}
 
 		// 3. Create a scheduler context for this fuzz iteration.
 		schedulerCtx, cancelCycle := context.WithCancel(ctx)
@@ -123,6 +128,12 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 		// 5. Only upload the updated corpus if the cycle succeeded.
 		if err := s3cs.zipUploadCorpus(); err != nil {
 			logger.Error("Failed to zip and upload corpus; " +
+				"aborting scheduler")
+			return err
+		}
+
+		if err := s3cs.uploadToBucket(cfg.Project.ReportDir); err != nil {
+			logger.Error("Failed to upload reports; " +
 				"aborting scheduler")
 			return err
 		}

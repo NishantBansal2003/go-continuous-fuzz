@@ -1,0 +1,216 @@
+time=2025-07-11T23:37:27.402+05:30 level=INFO msg="Cloning project repository" url=https://github.com/go-continuous-fuzz/go-fuzzing-example.git path=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/project
+time=2025-07-11T23:37:28.985+05:30 level=INFO msg="Downloaded object" bytes=86754 s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/go-fuzzing-example_corpus.zip
+time=2025-07-11T23:37:29.032+05:30 level=INFO msg="Successfully downloaded and unzipped corpus" s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip
+time=2025-07-11T23:37:29.144+05:30 level=INFO msg="Downloaded object" bytes=2929 s3Bucket=test-go-continuous-fuzz-bucket key=index.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/index.html
+time=2025-07-11T23:37:29.231+05:30 level=INFO msg="Downloaded object" bytes=346 s3Bucket=test-go-continuous-fuzz-bucket key=state.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/state.json
+time=2025-07-11T23:37:29.326+05:30 level=INFO msg="Downloaded object" bytes=4284 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzEvalExpr/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser/FuzzEvalExpr/2025-07-11.html
+time=2025-07-11T23:37:29.393+05:30 level=INFO msg="Downloaded object" bytes=4277 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzParseComplex/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser/FuzzParseComplex/2025-07-11.html
+time=2025-07-11T23:37:29.539+05:30 level=INFO msg="Downloaded object" bytes=2324 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzEvalExpr.html
+time=2025-07-11T23:37:29.651+05:30 level=INFO msg="Downloaded object" bytes=117 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzEvalExpr.json
+time=2025-07-11T23:37:29.720+05:30 level=INFO msg="Downloaded object" bytes=2336 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzParseComplex.html
+time=2025-07-11T23:37:29.826+05:30 level=INFO msg="Downloaded object" bytes=121 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzParseComplex.json
+time=2025-07-11T23:37:29.889+05:30 level=INFO msg="Downloaded object" bytes=3619 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzReverseString/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils/FuzzReverseString/2025-07-11.html
+time=2025-07-11T23:37:29.976+05:30 level=INFO msg="Downloaded object" bytes=3616 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzUnSafeReverseString/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils/FuzzUnSafeReverseString/2025-07-11.html
+time=2025-07-11T23:37:30.063+05:30 level=INFO msg="Downloaded object" bytes=2344 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzReverseString.html
+time=2025-07-11T23:37:30.113+05:30 level=INFO msg="Downloaded object" bytes=127 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzReverseString.json
+time=2025-07-11T23:37:30.216+05:30 level=INFO msg="Downloaded object" bytes=2362 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzUnSafeReverseString.html
+time=2025-07-11T23:37:30.266+05:30 level=INFO msg="Downloaded object" bytes=133 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzUnSafeReverseString.json
+time=2025-07-11T23:37:30.360+05:30 level=INFO msg="Downloaded object" bytes=3184 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree/FuzzBuildTree/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree/FuzzBuildTree/2025-07-11.html
+time=2025-07-11T23:37:30.425+05:30 level=INFO msg="Downloaded object" bytes=2325 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree_FuzzBuildTree.html
+time=2025-07-11T23:37:30.480+05:30 level=INFO msg="Downloaded object" bytes=116 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree_FuzzBuildTree.json
+time=2025-07-11T23:37:30.481+05:30 level=INFO msg="Starting fuzzing scheduler" startTime="Fri, 11 Jul 2025 23:37:30 IST"
+time=2025-07-11T23:37:30.481+05:30 level=INFO msg="Discovering fuzz targets" package=parser
+time=2025-07-11T23:37:31.446+05:30 level=INFO msg="Discovering fuzz targets" package=stringutils
+time=2025-07-11T23:37:32.269+05:30 level=INFO msg="Discovering fuzz targets" package=tree
+time=2025-07-11T23:37:32.970+05:30 level=INFO msg="Per-target fuzz timeout calculated" duration=1m30s
+time=2025-07-11T23:37:35.764+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Pulling from library/golang\",\"id\":\"1.23.9\"}"
+time=2025-07-11T23:37:35.840+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Digest: sha256:1cc01afde44821895ea712b5b4b802ef3c3ddeb7a7bb3f2e69c19bbc5877dace\"}"
+time=2025-07-11T23:37:35.841+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Status: Image is up to date for golang:1.23.9\"}"
+time=2025-07-11T23:37:35.859+05:30 level=INFO msg="Worker starting fuzz target" workerID=1 package=parser target=FuzzEvalExpr timeout=1m30s
+time=2025-07-11T23:37:35.860+05:30 level=INFO msg="Executing fuzz target in Docker" package=parser target=FuzzEvalExpr duration=1m30s
+time=2025-07-11T23:37:35.860+05:30 level=INFO msg="Worker starting fuzz target" workerID=3 package=parser target=FuzzParseComplex timeout=1m30s
+time=2025-07-11T23:37:35.860+05:30 level=INFO msg="Executing fuzz target in Docker" package=parser target=FuzzParseComplex duration=1m30s
+time=2025-07-11T23:37:35.860+05:30 level=INFO msg="Worker starting fuzz target" workerID=2 package=stringutils target=FuzzUnSafeReverseString timeout=1m30s
+time=2025-07-11T23:37:35.861+05:30 level=INFO msg="Executing fuzz target in Docker" package=stringutils target=FuzzUnSafeReverseString duration=1m30s
+time=2025-07-11T23:38:38.933+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 0s, gathering baseline coverage: 0/198 completed"
+time=2025-07-11T23:38:39.048+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="fuzz: elapsed: 0s, gathering baseline coverage: 0/6 completed"
+time=2025-07-11T23:38:39.053+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="fuzz: elapsed: 0s, gathering baseline coverage: 6/6 completed, now fuzzing with 1 workers"
+time=2025-07-11T23:38:39.081+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="fuzz: minimizing 29-byte failing input file"
+time=2025-07-11T23:38:39.094+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="fuzz: elapsed: 0s, minimizing"
+time=2025-07-11T23:38:39.094+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="--- FAIL: FuzzUnSafeReverseString (0.06s)"
+time=2025-07-11T23:38:39.095+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="    --- FAIL: FuzzUnSafeReverseString (0.00s)"
+time=2025-07-11T23:38:39.099+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="        stringutils_test.go:17: Reverse produced invalid UTF-8 string \"\\x80\\xc4\""
+time=2025-07-11T23:38:39.100+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="    "
+time=2025-07-11T23:38:39.100+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="    Failing input written to testdata/fuzz/FuzzUnSafeReverseString/c6238154494dda9b"
+time=2025-07-11T23:38:39.101+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="    To re-run:"
+time=2025-07-11T23:38:39.101+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="    go test -run=FuzzUnSafeReverseString/c6238154494dda9b"
+time=2025-07-11T23:38:39.102+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message=FAIL
+time=2025-07-11T23:38:39.102+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="exit status 1"
+time=2025-07-11T23:38:39.102+05:30 level=INFO msg="Fuzzer output" target=FuzzUnSafeReverseString package=stringutils message="FAIL\tgithub.com/go-continuous-fuzz/go-fuzzing-example/stringutils\t0.069s"
+time=2025-07-11T23:38:39.156+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 1s, gathering baseline coverage: 198/198 completed, now fuzzing with 1 workers"
+time=2025-07-11T23:38:39.572+05:30 level=INFO msg="Known crash detected. Please fix the failing testcase." target=FuzzUnSafeReverseString package=stringutils log_file=stringutils_FuzzUnSafeReverseString_42c3eb92e45ec7fd_failure.log
+time=2025-07-11T23:38:39.574+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzUnSafeReverseString
+time=2025-07-11T23:38:40.010+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 0s, gathering baseline coverage: 0/7 completed"
+time=2025-07-11T23:38:40.040+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 0s, gathering baseline coverage: 7/7 completed, now fuzzing with 1 workers"
+time=2025-07-11T23:38:41.552+05:30 level=ERROR msg="Failed to stop container" error="Error response from daemon: No such container: 5b94aff381bec1c55bd6ddc7b34d6e2626a5633bdd6378cfe7a759b6fbddc972" containerID=5b94aff381bec1c55bd6ddc7b34d6e2626a5633bdd6378cfe7a759b6fbddc972
+time=2025-07-11T23:38:41.552+05:30 level=INFO msg="Worker completed fuzz target" workerID=2 package=stringutils target=FuzzUnSafeReverseString
+time=2025-07-11T23:38:41.552+05:30 level=INFO msg="Worker starting fuzz target" workerID=2 package=stringutils target=FuzzReverseString timeout=1m30s
+time=2025-07-11T23:38:41.552+05:30 level=INFO msg="Executing fuzz target in Docker" package=stringutils target=FuzzReverseString duration=1m30s
+time=2025-07-11T23:38:41.903+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 3s, execs: 29916 (9961/sec), new interesting: 0 (total: 198)"
+time=2025-07-11T23:38:43.020+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 3s, execs: 33868 (11287/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:44.907+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 6s, execs: 59510 (9869/sec), new interesting: 0 (total: 198)"
+time=2025-07-11T23:38:46.022+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 6s, execs: 70211 (12097/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:47.967+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 9s, execs: 78828 (6438/sec), new interesting: 1 (total: 199)"
+time=2025-07-11T23:38:49.080+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 9s, execs: 83835 (4548/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:50.927+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 12s, execs: 94815 (5332/sec), new interesting: 1 (total: 199)"
+time=2025-07-11T23:38:52.025+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 12s, execs: 109979 (8712/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:54.003+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 15s, execs: 120010 (8373/sec), new interesting: 1 (total: 199)"
+time=2025-07-11T23:38:55.066+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 15s, execs: 135162 (8385/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:57.001+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 18s, execs: 137660 (5887/sec), new interesting: 1 (total: 199)"
+time=2025-07-11T23:38:58.057+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 18s, execs: 156000 (6957/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:38:59.968+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 21s, execs: 157016 (6414/sec), new interesting: 1 (total: 199)"
+time=2025-07-11T23:39:01.038+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 21s, execs: 177898 (7299/sec), new interesting: 0 (total: 7)"
+time=2025-07-11T23:39:02.963+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 24s, execs: 180515 (7897/sec), new interesting: 2 (total: 200)"
+time=2025-07-11T23:39:03.214+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: minimizing 33-byte failing input file"
+time=2025-07-11T23:39:03.488+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="fuzz: elapsed: 23s, minimizing"
+time=2025-07-11T23:39:03.488+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="--- FAIL: FuzzParseComplex (23.48s)"
+time=2025-07-11T23:39:03.488+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="    --- FAIL: FuzzParseComplex (0.00s)"
+time=2025-07-11T23:39:03.490+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="        testing.go:1591: panic: runtime error: index out of range [6] with length 6"
+time=2025-07-11T23:39:03.491+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            goroutine 199807 [running]:"
+time=2025-07-11T23:39:03.491+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            runtime/debug.Stack()"
+time=2025-07-11T23:39:03.491+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/runtime/debug/stack.go:26 +0xc4"
+time=2025-07-11T23:39:03.492+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            testing.tRunner.func1()"
+time=2025-07-11T23:39:03.492+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/testing/testing.go:1591 +0x21c"
+time=2025-07-11T23:39:03.492+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            panic({0x23b380?, 0x400c173440?})"
+time=2025-07-11T23:39:03.492+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/runtime/panic.go:791 +0x124"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            github.com/go-continuous-fuzz/go-fuzzing-example/parser.ParseComplex(...)"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/go-continuous-fuzz-project/parser/parser.go:16"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            github.com/go-continuous-fuzz/go-fuzzing-example/parser.FuzzParseComplex.func1(0x40000837d8?, {0x40094bdfe6, 0x6})"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/go-continuous-fuzz-project/parser/parser_test.go:12 +0x358"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            reflect.Value.call({0x2150e0?, 0x25d500?, 0x4000083e38?}, {0x24d134, 0x4}, {0x400950ba40, 0x2, 0x163ce0?})"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/reflect/value.go:584 +0x97c"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            reflect.Value.Call({0x2150e0?, 0x25d500?, 0x4000135678?}, {0x400950ba40?, 0x24c6e0?, 0x2b4f6c?})"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/reflect/value.go:368 +0x94"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            testing.(*F).Fuzz.func1.1(0x400953fa00?)"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/testing/fuzz.go:335 +0x258"
+time=2025-07-11T23:39:03.493+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            testing.tRunner(0x400953fa00, 0x400953c990)"
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/testing/testing.go:1690 +0xe4"
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            created by testing.(*F).Fuzz.func1 in goroutine 6"
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            \t/usr/local/go/src/testing/fuzz.go:322 +0x49c"
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="            "
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="    "
+time=2025-07-11T23:39:03.494+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="    Failing input written to testdata/fuzz/FuzzParseComplex/3013a69708b06e04"
+time=2025-07-11T23:39:03.495+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="    To re-run:"
+time=2025-07-11T23:39:03.495+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="    go test -run=FuzzParseComplex/3013a69708b06e04"
+time=2025-07-11T23:39:03.495+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message=FAIL
+time=2025-07-11T23:39:03.515+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="exit status 1"
+time=2025-07-11T23:39:03.515+05:30 level=INFO msg="Fuzzer output" target=FuzzParseComplex package=parser message="FAIL\tgithub.com/go-continuous-fuzz/go-fuzzing-example/parser\t23.578s"
+time=2025-07-11T23:39:04.457+05:30 level=INFO msg="Known crash detected. Please fix the failing testcase." target=FuzzParseComplex package=parser log_file=parser_FuzzParseComplex_11e27f968d8a9807_failure.log
+time=2025-07-11T23:39:04.459+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=parser target=FuzzParseComplex
+time=2025-07-11T23:39:05.931+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 27s, execs: 197071 (5501/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:06.719+05:30 level=INFO msg="Worker completed fuzz target" workerID=3 package=parser target=FuzzParseComplex
+time=2025-07-11T23:39:06.719+05:30 level=INFO msg="Worker starting fuzz target" workerID=3 package=tree target=FuzzBuildTree timeout=1m30s
+time=2025-07-11T23:39:06.719+05:30 level=INFO msg="Executing fuzz target in Docker" package=tree target=FuzzBuildTree duration=1m30s
+time=2025-07-11T23:39:08.911+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 30s, execs: 206549 (3166/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:11.944+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 33s, execs: 220728 (4725/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:14.919+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 36s, execs: 237185 (5493/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:17.936+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 39s, execs: 249361 (4052/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:20.933+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 42s, execs: 266359 (5675/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:23.918+05:30 level=INFO msg="Fuzzer output" target=FuzzEvalExpr package=parser message="fuzz: elapsed: 45s, execs: 286300 (6646/sec), new interesting: 3 (total: 201)"
+time=2025-07-11T23:39:25.871+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=parser target=FuzzEvalExpr
+time=2025-07-11T23:39:29.421+05:30 level=INFO msg="Worker completed fuzz target" workerID=1 package=parser target=FuzzEvalExpr
+time=2025-07-11T23:39:29.421+05:30 level=INFO msg="No more tasks in queue; stopping worker" workerID=1
+time=2025-07-11T23:40:02.486+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 0s, gathering baseline coverage: 0/54 completed"
+time=2025-07-11T23:40:02.520+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 0s, gathering baseline coverage: 54/54 completed, now fuzzing with 1 workers"
+time=2025-07-11T23:40:05.471+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 3s, execs: 54496 (18158/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:06.918+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 0s, gathering baseline coverage: 0/1 completed"
+time=2025-07-11T23:40:06.924+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 0s, gathering baseline coverage: 1/1 completed, now fuzzing with 1 workers"
+time=2025-07-11T23:40:08.482+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 6s, execs: 111777 (19098/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:09.919+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 3s, execs: 1 (0/sec), new interesting: 0 (total: 1)"
+time=2025-07-11T23:40:11.473+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 9s, execs: 167510 (18578/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:12.925+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 6s, execs: 1 (0/sec), new interesting: 0 (total: 1)"
+time=2025-07-11T23:40:14.471+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 12s, execs: 217238 (16577/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:15.964+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 9s, execs: 1 (0/sec), new interesting: 0 (total: 1)"
+time=2025-07-11T23:40:17.233+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="fuzz: elapsed: 10s, execs: 4 (2/sec), new interesting: 0 (total: 1)"
+time=2025-07-11T23:40:17.233+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="--- FAIL: FuzzBuildTree (10.31s)"
+time=2025-07-11T23:40:17.233+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="    fuzzing process hung or terminated unexpectedly: exit status 2"
+time=2025-07-11T23:40:17.234+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="    Failing input written to testdata/fuzz/FuzzBuildTree/a83bf66971ab09e0"
+time=2025-07-11T23:40:17.238+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="    To re-run:"
+time=2025-07-11T23:40:17.239+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="    go test -run=FuzzBuildTree/a83bf66971ab09e0"
+time=2025-07-11T23:40:17.239+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message=FAIL
+time=2025-07-11T23:40:17.258+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="exit status 1"
+time=2025-07-11T23:40:17.258+05:30 level=INFO msg="Fuzzer output" target=FuzzBuildTree package=tree message="FAIL\tgithub.com/go-continuous-fuzz/go-fuzzing-example/tree\t10.323s"
+time=2025-07-11T23:40:17.477+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 15s, execs: 268942 (17195/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:17.605+05:30 level=INFO msg="Known crash detected. Please fix the failing testcase." target=FuzzBuildTree package=tree log_file=tree_FuzzBuildTree_e3b0c44298fc1c14_failure.log
+time=2025-07-11T23:40:17.608+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=tree target=FuzzBuildTree
+time=2025-07-11T23:40:19.736+05:30 level=ERROR msg="Failed to stop container" error="Error response from daemon: No such container: 901ff4ad21a0d6449bceff97a8d70d850bb9d30afa44f9e9cebda0f2e50d6f92" containerID=901ff4ad21a0d6449bceff97a8d70d850bb9d30afa44f9e9cebda0f2e50d6f92
+time=2025-07-11T23:40:19.737+05:30 level=INFO msg="Worker completed fuzz target" workerID=3 package=tree target=FuzzBuildTree
+time=2025-07-11T23:40:19.737+05:30 level=INFO msg="No more tasks in queue; stopping worker" workerID=3
+time=2025-07-11T23:40:20.480+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 18s, execs: 300945 (10689/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:23.573+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 21s, execs: 328669 (9227/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:26.476+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 24s, execs: 345936 (5766/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:29.473+05:30 level=INFO msg="Fuzzer output" target=FuzzReverseString package=stringutils message="fuzz: elapsed: 27s, execs: 380976 (11677/sec), new interesting: 0 (total: 54)"
+time=2025-07-11T23:40:31.554+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzReverseString
+time=2025-07-11T23:40:33.367+05:30 level=INFO msg="Worker completed fuzz target" workerID=2 package=stringutils target=FuzzReverseString
+time=2025-07-11T23:40:33.368+05:30 level=INFO msg="No more tasks in queue; stopping worker" workerID=2
+time=2025-07-11T23:40:33.369+05:30 level=INFO msg="All fuzz targets processed successfully in this cycle"
+time=2025-07-11T23:40:33.370+05:30 level=INFO msg="All workers completed early; cleaning up cycle"
+time=2025-07-11T23:40:33.951+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip
+time=2025-07-11T23:40:33.951+05:30 level=INFO msg="Successfully zipped and uploaded corpus" s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip
+time=2025-07-11T23:40:34.029+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=index.html
+time=2025-07-11T23:40:34.100+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=state.json
+time=2025-07-11T23:40:34.183+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzEvalExpr/2025-07-11.html
+time=2025-07-11T23:40:34.254+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzParseComplex/2025-07-11.html
+time=2025-07-11T23:40:34.325+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.html
+time=2025-07-11T23:40:34.389+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.json
+time=2025-07-11T23:40:34.456+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.html
+time=2025-07-11T23:40:34.519+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.json
+time=2025-07-11T23:40:34.588+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzReverseString/2025-07-11.html
+time=2025-07-11T23:40:34.660+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzUnSafeReverseString/2025-07-11.html
+time=2025-07-11T23:40:34.730+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.html
+time=2025-07-11T23:40:34.800+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.json
+time=2025-07-11T23:40:34.872+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.html
+time=2025-07-11T23:40:34.937+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.json
+time=2025-07-11T23:40:35.007+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree/FuzzBuildTree/2025-07-11.html
+time=2025-07-11T23:40:35.080+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.html
+time=2025-07-11T23:40:35.143+05:30 level=INFO msg="Uploaded object to S3" s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.json
+time=2025-07-11T23:40:35.203+05:30 level=INFO msg="Cloning project repository" url=https://github.com/go-continuous-fuzz/go-fuzzing-example.git path=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/project
+time=2025-07-11T23:40:36.304+05:30 level=INFO msg="Downloaded object" bytes=87696 s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/go-fuzzing-example_corpus.zip
+time=2025-07-11T23:40:36.351+05:30 level=INFO msg="Successfully downloaded and unzipped corpus" s3Bucket=test-go-continuous-fuzz-bucket key=go-fuzzing-example_corpus.zip
+time=2025-07-11T23:40:36.489+05:30 level=INFO msg="Downloaded object" bytes=2929 s3Bucket=test-go-continuous-fuzz-bucket key=index.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/index.html
+time=2025-07-11T23:40:36.544+05:30 level=INFO msg="Downloaded object" bytes=346 s3Bucket=test-go-continuous-fuzz-bucket key=state.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/state.json
+time=2025-07-11T23:40:36.605+05:30 level=INFO msg="Downloaded object" bytes=4284 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzEvalExpr/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser/FuzzEvalExpr/2025-07-11.html
+time=2025-07-11T23:40:36.663+05:30 level=INFO msg="Downloaded object" bytes=4277 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser/FuzzParseComplex/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser/FuzzParseComplex/2025-07-11.html
+time=2025-07-11T23:40:36.724+05:30 level=INFO msg="Downloaded object" bytes=2324 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzEvalExpr.html
+time=2025-07-11T23:40:36.774+05:30 level=INFO msg="Downloaded object" bytes=117 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzEvalExpr.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzEvalExpr.json
+time=2025-07-11T23:40:36.831+05:30 level=INFO msg="Downloaded object" bytes=2336 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzParseComplex.html
+time=2025-07-11T23:40:36.883+05:30 level=INFO msg="Downloaded object" bytes=121 s3Bucket=test-go-continuous-fuzz-bucket key=targets/parser_FuzzParseComplex.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/parser_FuzzParseComplex.json
+time=2025-07-11T23:40:36.941+05:30 level=INFO msg="Downloaded object" bytes=3619 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzReverseString/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils/FuzzReverseString/2025-07-11.html
+time=2025-07-11T23:40:36.996+05:30 level=INFO msg="Downloaded object" bytes=3616 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils/FuzzUnSafeReverseString/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils/FuzzUnSafeReverseString/2025-07-11.html
+time=2025-07-11T23:40:37.056+05:30 level=INFO msg="Downloaded object" bytes=2344 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzReverseString.html
+time=2025-07-11T23:40:37.129+05:30 level=INFO msg="Downloaded object" bytes=127 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzReverseString.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzReverseString.json
+time=2025-07-11T23:40:37.186+05:30 level=INFO msg="Downloaded object" bytes=2362 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzUnSafeReverseString.html
+time=2025-07-11T23:40:37.243+05:30 level=INFO msg="Downloaded object" bytes=133 s3Bucket=test-go-continuous-fuzz-bucket key=targets/stringutils_FuzzUnSafeReverseString.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/stringutils_FuzzUnSafeReverseString.json
+time=2025-07-11T23:40:37.304+05:30 level=INFO msg="Downloaded object" bytes=3184 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree/FuzzBuildTree/2025-07-11.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree/FuzzBuildTree/2025-07-11.html
+time=2025-07-11T23:40:37.358+05:30 level=INFO msg="Downloaded object" bytes=2325 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.html destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree_FuzzBuildTree.html
+time=2025-07-11T23:40:37.411+05:30 level=INFO msg="Downloaded object" bytes=116 s3Bucket=test-go-continuous-fuzz-bucket key=targets/tree_FuzzBuildTree.json destPath=/var/folders/8l/xgcmffld3k17bsnpjbqvmm_w0000gn/T/go-continuous-fuzz-1051620691/reports/targets/tree_FuzzBuildTree.json
+time=2025-07-11T23:40:37.411+05:30 level=INFO msg="Starting fuzzing scheduler" startTime="Fri, 11 Jul 2025 23:40:37 IST"
+time=2025-07-11T23:40:37.411+05:30 level=INFO msg="Discovering fuzz targets" package=parser
+time=2025-07-11T23:40:38.509+05:30 level=INFO msg="Discovering fuzz targets" package=stringutils
+time=2025-07-11T23:40:39.132+05:30 level=INFO msg="Discovering fuzz targets" package=tree
+time=2025-07-11T23:40:39.675+05:30 level=INFO msg="Per-target fuzz timeout calculated" duration=1m30s
+time=2025-07-11T23:40:42.297+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Pulling from library/golang\",\"id\":\"1.23.9\"}"
+time=2025-07-11T23:40:42.374+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Digest: sha256:1cc01afde44821895ea712b5b4b802ef3c3ddeb7a7bb3f2e69c19bbc5877dace\"}"
+time=2025-07-11T23:40:42.374+05:30 level=INFO msg="Image Pull output" message="{\"status\":\"Status: Image is up to date for golang:1.23.9\"}"
+time=2025-07-11T23:40:42.379+05:30 level=INFO msg="Worker starting fuzz target" workerID=2 package=stringutils target=FuzzUnSafeReverseString timeout=1m30s
+time=2025-07-11T23:40:42.379+05:30 level=INFO msg="Executing fuzz target in Docker" package=stringutils target=FuzzUnSafeReverseString duration=1m30s
+time=2025-07-11T23:40:42.379+05:30 level=INFO msg="Worker starting fuzz target" workerID=3 package=parser target=FuzzParseComplex timeout=1m30s
+time=2025-07-11T23:40:42.379+05:30 level=INFO msg="Worker starting fuzz target" workerID=1 package=parser target=FuzzEvalExpr timeout=1m30s
+time=2025-07-11T23:40:42.380+05:30 level=INFO msg="Executing fuzz target in Docker" package=parser target=FuzzEvalExpr duration=1m30s
+time=2025-07-11T23:40:42.381+05:30 level=INFO msg="Executing fuzz target in Docker" package=parser target=FuzzParseComplex duration=1m30s
+time=2025-07-11T23:41:13.435+05:30 level=INFO msg="Received interrupt signal; shutting down gracefully..."
+time=2025-07-11T23:41:13.441+05:30 level=INFO msg="Shutdown initiated during fuzzing cycle; performing final cleanup."
+time=2025-07-11T23:41:13.442+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=parser target=FuzzParseComplex
+time=2025-07-11T23:41:13.441+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzUnSafeReverseString
+time=2025-07-11T23:41:13.442+05:30 level=INFO msg="Fuzzing in Docker completed successfully" package=parser target=FuzzEvalExpr
+time=2025-07-11T23:41:14.976+05:30 level=ERROR msg="Failed to run fuzzing cycles" error="fuzzing process failed: one or more workers failed: worker 1: fuzz target \"parser\"/\"FuzzEvalExpr\" failed: failed to add covergae report for package parser, target FuzzEvalExpr: go test failed: signal: interrupt\nStderr: "

@@ -63,9 +63,7 @@ func saveMasterState(statePath string, states []TargetState) error {
 
 // addToMaster adds a new package and target to the master list, regenerates the
 // index.html report, and persists state changes.
-func addToMaster(pkgPath, target string, projectName string, cfg *Config,
-) error {
-
+func addToMaster(pkgPath, target string, cfg *Config) error {
 	statePath := filepath.Join(cfg.Project.ReportDir, "state.json")
 	states, err := loadMasterState(statePath)
 	if err != nil {
@@ -112,7 +110,7 @@ func addToMaster(pkgPath, target string, projectName string, cfg *Config,
 	return tmpl.Execute(indexFile, struct {
 		ProjectName string
 		Entries     []MasterEntry
-	}{projectName, entries})
+	}{cfg.Project.SrcRepo, entries})
 }
 
 // updateTarget updates the HTML report and JSON history file for a given
@@ -134,7 +132,7 @@ func updateTarget(pkgPath, target, coverage string, cfg *Config) error {
 	}
 
 	// Create new entry if needed
-	currentDate := time.Now().Format("2025-01-02")
+	currentDate := time.Now().Format("2006-01-02")
 	reportHTMLPath := filepath.Join(pkgPath, target, currentDate+".html")
 
 	// Prepend a new entry only if there is no existing entry for the
@@ -182,7 +180,7 @@ func updateReport(pkg, target string, cfg *Config) error {
 	pkgPath := filepath.Join(cfg.Project.SrcDir, pkg)
 
 	// Prepare corpus directories
-	corpusPath := filepath.Join(cfg.Project.CorpusPath, pkg, "testdata",
+	corpusPath := filepath.Join(cfg.Project.CorpusDir, pkg, "testdata",
 		"fuzz", target)
 	pkgCorpusPath := filepath.Join(pkgPath, "testdata", "fuzz", target)
 
@@ -218,13 +216,13 @@ func updateReport(pkg, target string, cfg *Config) error {
 
 	// Generate coverage report
 	targetReportDir := filepath.Join(cfg.Project.ReportDir, "targets",
-		pkgPath, target)
+		pkg, target)
 	if err := EnsureDirExists(targetReportDir); err != nil {
 		return fmt.Errorf("report dir creation failed: %w", err)
 	}
 
 	reportPath := filepath.Join(targetReportDir,
-		time.Now().Format("2025-01-02")+".html")
+		time.Now().Format("2006-01-02")+".html")
 	coverCmd := exec.CommandContext(ctx, "go", "tool", "cover",
 		"-html=coverage.out",
 		"-o", reportPath,
@@ -239,9 +237,7 @@ func updateReport(pkg, target string, cfg *Config) error {
 	}
 
 	// Update indexes
-	if err := addToMaster(pkg, target, "Go Fuzzing example",
-		cfg); err != nil {
-
+	if err := addToMaster(pkg, target, cfg); err != nil {
 		return fmt.Errorf("index update failed: %w", err)
 	}
 

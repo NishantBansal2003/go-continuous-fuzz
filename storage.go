@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -58,9 +59,9 @@ func NewS3CorpusStore(ctx context.Context, logger *slog.Logger,
 // If the object does not exist (NoSuchKey), it logs the event and returns true
 // with a nil error, indicating that the process should continue with an empty
 // corpus. For all other errors, it returns false and the corresponding error.
-func (s3cs *S3CorpusStore) downloadObject() (bool, error) {
+func (s3cs *S3CorpusStore) downloadObject(outPath, key string) (bool, error) {
 	// Create destination file
-	outFile, err := os.Create(s3cs.zipPath)
+	outFile, err := os.Create(outPath)
 	if err != nil {
 		return false, fmt.Errorf("creating local file: %w", err)
 	}
@@ -74,22 +75,19 @@ func (s3cs *S3CorpusStore) downloadObject() (bool, error) {
 	downloader := manager.NewDownloader(s3cs.client)
 	n, err := downloader.Download(s3cs.ctx, outFile, &s3.GetObjectInput{
 		Bucket: &s3cs.bucket,
-		Key:    &s3cs.key,
+		Key:    &key,
 	})
 	if err != nil {
 		var nsk *types.NoSuchKey
 		if errors.As(err, &nsk) {
-			s3cs.logger.Info("Corpus object not found. Starting "+
-				"with empty corpus.", "s3Bucket", s3cs.bucket,
-				"key", s3cs.key)
 			return true, nil
 		}
 		return false, fmt.Errorf("downloading s3://%s/%s: %w",
-			s3cs.bucket, s3cs.key, err)
+			s3cs.bucket, key, err)
 	}
 
 	s3cs.logger.Info("Downloaded object", "bytes", n, "s3Bucket",
-		s3cs.bucket, "key", s3cs.key, "destPath", s3cs.zipPath)
+		s3cs.bucket, "key", key, "destPath", outPath)
 
 	return false, nil
 }
@@ -99,23 +97,23 @@ func (s3cs *S3CorpusStore) downloadObject() (bool, error) {
 //
 // It reads the ZIP data from the provided io.PipeReader, which is typically
 // streamed from a concurrent zipping process.
-//
-// The object is stored with the content type "application/zip".
-func (s3cs *S3CorpusStore) uploadObject(zipReader *io.PipeReader) error {
+func (s3cs *S3CorpusStore) uploadObject(fileReader io.Reader, key,
+	contentType string) error {
+
 	uploader := manager.NewUploader(s3cs.client)
 	_, err := uploader.Upload(s3cs.ctx, &s3.PutObjectInput{
 		Bucket:      &s3cs.bucket,
-		Key:         &s3cs.key,
-		Body:        zipReader,
-		ContentType: aws.String("application/zip"),
+		Key:         &key,
+		Body:        fileReader,
+		ContentType: &contentType,
 	})
 	if err != nil {
 		return fmt.Errorf("uploading s3://%s/%s: %w", s3cs.bucket,
-			s3cs.key, err)
+			key, err)
 	}
 
 	s3cs.logger.Info("Uploaded object to S3", "s3Bucket", s3cs.bucket,
-		"key", s3cs.key)
+		"key", key)
 
 	return nil
 }
@@ -282,7 +280,7 @@ func (s3cs *S3CorpusStore) zipUploadCorpus() error {
 		pw.CloseWithError(err)
 	}()
 
-	if err := s3cs.uploadObject(pr); err != nil {
+	if err := s3cs.uploadObject(pr, s3cs.key, "application/zip"); err != nil {
 		return fmt.Errorf("upload failed: %w", err)
 	}
 
@@ -295,19 +293,96 @@ func (s3cs *S3CorpusStore) zipUploadCorpus() error {
 // downloadUnZipCorpus downloads the ZIP archive from S3 and unzips it into
 // the local corpusDir (unless the archive is empty).
 func (s3cs *S3CorpusStore) downloadUnZipCorpus() error {
-	empty, err := s3cs.downloadObject()
+	empty, err := s3cs.downloadObject(s3cs.zipPath, s3cs.key)
 	if err != nil {
 		return fmt.Errorf("corpus download failed: %w", err)
 	}
 
-	if !empty {
-		if err := s3cs.unzip(); err != nil {
-			return fmt.Errorf("corpus unzip failed: %w", err)
-		}
+	if empty {
+		s3cs.logger.Info("Corpus object not found. Starting "+
+			"with empty corpus.", "s3Bucket", s3cs.bucket,
+			"key", s3cs.key)
+
+		return nil
+	}
+
+	if err := s3cs.unzip(); err != nil {
+		return fmt.Errorf("corpus unzip failed: %w", err)
 	}
 
 	s3cs.logger.Info("Successfully downloaded and unzipped corpus",
 		"s3Bucket", s3cs.bucket, "key", s3cs.key)
 
 	return nil
+}
+
+func (s3cs *S3CorpusStore) downloadFromBucket(localDir string) error {
+	paginator := s3.NewListObjectsV2Paginator(s3cs.client, &s3.ListObjectsV2Input{
+		Bucket: &s3cs.bucket,
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(s3cs.ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list objects: %w", err)
+		}
+		for _, item := range page.Contents {
+			key := *item.Key
+
+			// Only index.html, state.json, and targets/
+			if key != "index.html" && key != "state.json" &&
+				!strings.HasPrefix(key, "targets/") {
+
+				continue
+			}
+
+			localPath := filepath.Join(localDir, key)
+
+			if err := EnsureDirExists(filepath.Dir(localPath)); err != nil {
+				return err
+			}
+
+			if _, err := s3cs.downloadObject(localPath, key); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s3cs *S3CorpusStore) uploadToBucket(localDir string) error {
+	return filepath.Walk(localDir, func(path string, info os.FileInfo,
+		err error) error {
+
+		if err != nil || info.IsDir() {
+			return err
+		}
+
+		relPath, err := filepath.Rel(localDir, path)
+		if err != nil {
+			return err
+		}
+
+		key := filepath.ToSlash(relPath)
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		if err = s3cs.uploadObject(file, key, detectContentType(path)); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func detectContentType(filename string) string {
+	ext := filepath.Ext(filename)
+	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+		return mimeType
+	}
+	return "application/octet-stream"
 }
