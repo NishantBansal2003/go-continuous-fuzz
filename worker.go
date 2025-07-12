@@ -227,5 +227,8 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 			"%s, target %s: %w", pkg, target, err)
 	}
 
+	wg.logger.Info("Successfully added/updated coverage report", "package",
+		pkg, "target", target)
+
 	return nil
 }
