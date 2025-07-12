@@ -140,7 +140,7 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 
 	// Define the path to store the corpus data generated during fuzzing on
 	// the host machine.
-	hostCorpusPath := filepath.Join(wg.cfg.Project.CorpusPath, pkg,
+	hostCorpusPath := filepath.Join(wg.cfg.Project.CorpusDir, pkg,
 		"testdata", "fuzz")
 
 	// Ensure that the corpus directory on the host machine exists to avoid
@@ -219,6 +219,15 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 	}
 
 	wg.logger.Info("Fuzzing in Docker completed successfully", "package",
+		pkg, "target", target)
+
+	if err := updateReport(context.Background(), pkg, target, wg.cfg,
+		wg.logger); err != nil {
+		return fmt.Errorf("failed to add covergae report for package "+
+			"%s, target %s: %w", pkg, target, err)
+	}
+
+	wg.logger.Info("Successfully added/updated coverage report", "package",
 		pkg, "target", target)
 
 	return nil
