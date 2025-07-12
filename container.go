@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -159,7 +160,9 @@ func (c *Container) Wait(ID string) error {
 func (c *Container) Stop(ID string) {
 	if err := c.cli.ContainerStop(context.Background(), ID,
 		container.StopOptions{}); err != nil {
-		c.logger.Error("Failed to stop container", "error", err,
-			"containerID", ID)
+		if !strings.Contains(err.Error(), "No such container") {
+			c.logger.Error("Failed to stop container", "error", err,
+				"containerID", ID)
+		}
 	}
 }

@@ -221,7 +221,8 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 	wg.logger.Info("Fuzzing in Docker completed successfully", "package",
 		pkg, "target", target)
 
-	if err := updateReport(pkg, target, wg.cfg); err != nil {
+	if err := updateReport(context.Background(), pkg, target, wg.cfg,
+		wg.logger); err != nil {
 		return fmt.Errorf("failed to add covergae report for package "+
 			"%s, target %s: %w", pkg, target, err)
 	}

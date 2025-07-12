@@ -20,11 +20,12 @@ import (
 // runFuzzingCycles runs an infinite loop of fuzzing cycles. Each cycle consists
 // of:
 //  1. Cloning the Git repository specified in cfg.Project.SrcRepo.
-//  2. Downloading corpus from S3 bucket specified in cfg.Project.S3BucketName.
+//  2. Downloading corpus and reports from S3 bucket specified in
+//     cfg.Project.S3BucketName.
 //  3. Launching scheduler goroutines to execute all fuzz targets for a portion
 //     of cfg.Fuzz.SyncFrequency.
 //  4. Cleaning up the workspace.
-//  5. Uploading the updated corpus to the S3 bucket.
+//  5. Uploading the updated corpus and reports to the S3 bucket.
 //
 // The loop repeats until the parent context is canceled. Errors in cloning or
 // target discovery are returned immediately.
@@ -32,9 +33,9 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 	cfg *Config) error {
 
 	for {
-		// Cleanup the project and corpus directory (if any) created
-		// during previous runs.
-		cleanupProjectAndCorpus(logger, cfg)
+		// Cleanup the project, corpus and reports directory (if any)
+		// created during previous runs.
+		cleanupProjectCorpusAndReport(logger, cfg)
 
 		// 1. Clone the repository based on the provided configuration.
 		logger.Info("Cloning project repository", "url",
@@ -52,21 +53,16 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 			return err
 		}
 
-		// 2. Download corpus from S3 bucket.
-		s3cs, err := NewS3CorpusStore(ctx, logger, cfg)
+		// 2. Download corpus and reports from S3 bucket.
+		s3s, err := NewS3Store(ctx, logger, cfg)
 		if err != nil {
 			logger.Error("Failed to create S3 client; aborting" +
 				"scheduler")
 			return err
 		}
 
-		if err := s3cs.downloadUnZipCorpus(); err != nil {
-			logger.Error("Failed to download and unzip corpus; " +
-				"aborting scheduler")
-			return err
-		}
-		if err := s3cs.downloadFromBucket(cfg.Project.ReportDir); err != nil {
-			logger.Error("Failed to download reports; " +
+		if err := s3s.downloadCorpusAndReports(); err != nil {
+			logger.Error("Failed to download corpus and reports; " +
 				"aborting scheduler")
 			return err
 		}
@@ -125,15 +121,10 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 				"up cycle")
 		}
 
-		// 5. Only upload the updated corpus if the cycle succeeded.
-		if err := s3cs.zipUploadCorpus(); err != nil {
-			logger.Error("Failed to zip and upload corpus; " +
-				"aborting scheduler")
-			return err
-		}
-
-		if err := s3cs.uploadToBucket(cfg.Project.ReportDir); err != nil {
-			logger.Error("Failed to upload reports; " +
+		// 5. Only upload the updated corpus and reports if the cycle
+		//    succeeded.
+		if err := s3s.uploadCorpusAndReports(); err != nil {
+			logger.Error("Failed to upload corpus and reports; " +
 				"aborting scheduler")
 			return err
 		}

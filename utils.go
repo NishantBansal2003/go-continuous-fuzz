@@ -13,15 +13,19 @@ import (
 	"time"
 )
 
-// cleanupProjectAndCorpus deletes the project and corpus directory to restart
-// the fuzzing cycle.
-func cleanupProjectAndCorpus(logger *slog.Logger, cfg *Config) {
+// cleanupProjectCorpusAndReport deletes the project, corpus and reports
+// directory to restart the fuzzing cycle.
+func cleanupProjectCorpusAndReport(logger *slog.Logger, cfg *Config) {
 	if err := os.RemoveAll(cfg.Project.SrcDir); err != nil {
 		logger.Error("project cleanup failed", "error", err)
 	}
 
 	if err := os.RemoveAll(cfg.Project.CorpusDir); err != nil {
 		logger.Error("corpus cleanup failed", "error", err)
+	}
+
+	if err := os.RemoveAll(cfg.Project.ReportDir); err != nil {
+		logger.Error("reports cleanup failed", "error", err)
 	}
 }
 
