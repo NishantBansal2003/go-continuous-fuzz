@@ -3,11 +3,8 @@ name: E2E Tests
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: "Commit SHA to test"
-        required: true
+  pull_request:
+    branches: [main]
 
 permissions:
   id-token: write
@@ -17,20 +14,16 @@ jobs:
   e2e-test:
     name: Run E2E Tests
     runs-on: ubuntu-latest
-    env:
-      GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GO_FUZZING_EXAMPLE_AUTH_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::362112066003:role/s3_go-continuous-fuzz
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::026900513894:role/github_actions
+          aws-region: ap-south-1
 
       - name: Set up Go
         id: setup
