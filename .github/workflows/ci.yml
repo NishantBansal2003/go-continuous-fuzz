@@ -5,13 +5,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-env:
-  ROLE_TO_ASSUME: "arn:aws:iam::026900513894:role/github_actions"
-  AWS_REGION: "ap-south-1"
-
-permissions:
-  id-token: write
-  contents: read
 
 jobs:
   format:
