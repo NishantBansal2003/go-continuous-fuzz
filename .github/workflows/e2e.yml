@@ -56,16 +56,6 @@ jobs:
           role-to-assume: arn:aws:iam::026900513894:role/github_actions
           aws-region: ap-south-1
 
-      - name: Persist AWS credentials to config/credentials file
-        run: |
-          aws configure set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
-          aws configure set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
-          aws configure set region "${AWS_REGION}"
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-
       - name: Start minikube
         id: minikube
         uses: medyagh/setup-minikube@latest

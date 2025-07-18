@@ -194,9 +194,9 @@ if [[ ${MODE} == "k8s" ]]; then
   # Recreate AWS credentials secret
 	kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
   if ! kubectl create secret generic "${AWS_SECRET_NAME}" \
-		--from-literal=AWS_ACCESS_KEY_ID="$(aws configure get aws_access_key_id)" \
-		--from-literal=AWS_SECRET_ACCESS_KEY="$(aws configure get aws_secret_access_key)" \
-		--from-literal=AWS_REGION="$(aws configure get region)"; then
+		--from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+		--from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+		--from-literal=AWS_REGION="${AWS_REGION}"; then
 		echo "❌ Failed to create AWS credentials secret"
 		exit 1
 	fi
