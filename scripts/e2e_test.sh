@@ -102,7 +102,7 @@ check_issue_contains_string() {
 
   # Fetch issues from GitHub API
   local issues
-  issues=$(curl -s \
+  issues=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
     "https://api.github.com/repos/${owner}/${repo}/issues")
 
   # Check if any issue body contains the target string
@@ -422,7 +422,8 @@ for crash in "${required_crashes[@]}"; do
 done
 
 # Verify the expected number of open issues in the crash repo
-issue_count=$(curl -s "https://api.github.com/repos/go-continuous-fuzz/go-fuzzing-example/issues" | jq length)
+issue_count=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
+  "https://api.github.com/repos/NishantBansal2003/go-fuzzing-example/issues" | jq length)
 if [[ "${issue_count}" -ne 3 ]]; then
   echo "❌ ERROR: Expected 3 open issues, but found ${issue_count}"
   exit 1
