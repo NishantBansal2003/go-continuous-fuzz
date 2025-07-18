@@ -42,6 +42,7 @@ jobs:
   e2e-test-k8s:
     name: E2E Tests for Kubernetes setup
     runs-on: ubuntu-latest
+    needs: e2e-test-docker
     env:
       GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
