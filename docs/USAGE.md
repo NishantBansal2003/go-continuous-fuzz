@@ -12,6 +12,7 @@ You can configure **go-continuous-fuzz** using either conifg file or command-lin
 | `fuzz.pkgs-path`         | List of package paths to fuzz                                | Yes      | —       |
 | `fuzz.sync-frequency`    | Duration between consecutive fuzzing cycles                  | No       | 24h     |
 | `fuzz.num-workers`       | Number of concurrent fuzzing workers                         | No       | 1       |
+| `fuzz.in-cluster`        | Run in-cluster (Kubernetes). Defaults to Docker. if unset.   | No       | False   |
 
 **Repository URL formats:**
 For `project.src-repo`:
@@ -64,6 +65,32 @@ In short, issues will be created from the GitHub account associated with the pro
 
 Note: The updated corpus will be uploaded to the S3 bucket only if the fuzzing cycle completes successfully without any errors or user interruptions.
 
+**Running in Kubernetes Guidelines:**
+
+When the flag `--fuzz.in-cluster` is set, `go-continuous-fuzz` runs inside the Kubernetes cluster. This means the application must be executed within a Pod.
+The project uses specific fixed resource names for in-cluster fuzzing. These include:
+
+* **Namespace**: `default`
+* **ServiceAccount**: `go-continuous-fuzz-sa`
+* **PersistentVolumeClaim (PVC)**: `go-continuous-fuzz-pvc`
+
+Make sure to use these exact names when creating the Pod, ConfigMap/Secret, and PVC.
+Each fuzz target requires **2 GB of memory** and **1 CPU**. Ensure that your PVC requests adequate storage, or the application may behave unexpectedly (e.g., fuzzing jobs remain pending and then stop).
+Since the PVC is shared across multiple pods/jobs, the `accessModes` for the PVC must be set to `ReadWriteMany`. Make sure that the underlying StorageClass supports the `ReadWriteMany` access mode.
+We use a standard volume mount path inside the cluster:
+
+```
+mountPath: /var/lib/go-continuous-fuzz
+```
+
+Additionally:
+
+* AWS credentials must be provided as Kubernetes Secrets, which should be mounted into the Pod as environment variables or as files using a volume mount.
+* The configuration file must be mounted (via ConfigMap or Secret) to the path `/root/.go-continuous-fuzz/` with the filename `go-continuous-fuzz.conf`.
+
+For example manifests (Pod, PVC, ConfigMap), refer to the [manifests directory](../manifests/). These are primarily intended for testing purposes, but you may use your own setup as long as it follows the guidelines described above.
+
+
 ## How It Works
 
 1. **Configuration:**  
@@ -80,6 +107,9 @@ Note: The updated corpus will be uploaded to the S3 bucket only if the fuzzing c
 
 5. **Crash Reporting:**
    Whenever a crash is detected, an issue will be opened in `fuzz.crash-repo` containing the error logs and the failing input data. This feature includes crash deduplication to avoid creating duplicate issues.
+
+6. **Fuzzing Execution Modes:**
+   Fuzzing can be run locally, where each fuzz target runs in a separate Docker container. Alternatively, you can use the `--fuzz.in-cluster` flag to run inside a Kubernetes cluster, where each fuzz target is executed as a separate Kubernetes Job, spawning individual Pods.
 
 ## Running go-continuous-fuzz
 
@@ -103,6 +133,7 @@ Note: The updated corpus will be uploaded to the S3 bucket only if the fuzzing c
      --fuzz.pkgs-path=<path/to/pkg>
      --fuzz.sync-frequency=<time>
      --fuzz.num-workers=<number_of_workers>
+     --fuzz.in-cluster
    ```
 
 3. **Run the Fuzzing Engine:**  

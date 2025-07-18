@@ -79,7 +79,7 @@ type WorkerGroup struct {
 	ctx          context.Context
 	logger       *slog.Logger
 	goGroup      *errgroup.Group
-	cli          *client.Client
+	dockerClient *client.Client
 	k8sClientSet *kubernetes.Clientset
 	cfg          *Config
 	taskQueue    *TaskQueue
@@ -267,7 +267,7 @@ func (wg *WorkerGroup) createFuzzRunner(ctx context.Context, pkg, target,
 	return &Container{
 		ctx:            ctx,
 		logger:         wg.logger,
-		cli:            wg.cli,
+		cli:            wg.dockerClient,
 		cfg:            wg.cfg,
 		workDir:        filepath.Join(ContainerProjectPath, pkg),
 		hostCorpusPath: corpusPath,

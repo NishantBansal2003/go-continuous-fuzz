@@ -73,6 +73,8 @@ make docker-run VOLUME_MOUNTS=<required>
 make test
 ```
 
+**Note:** Ensure the following AWS credentials are set as environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION`.
+
 ## Additional Information
 
 You can install the compiled binary to your Go bin directory (`$GOBIN`, or `$HOME/go/bin` if `GOBIN` is not set) using the following command:

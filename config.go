@@ -97,7 +97,7 @@ type Fuzz struct {
 
 	NumWorkers int `long:"num-workers" description:"Number of concurrent fuzzing workers" default:"1"`
 
-	InCluster bool `long:"in-cluster" description:"Run inside Kubernetes cluster (default: false)"`
+	InCluster bool `long:"in-cluster" description:"Whether to run inside a Kubernetes cluster. Defaults to Docker if unset."`
 }
 
 // Config encapsulates all top-level configuration parameters required to run

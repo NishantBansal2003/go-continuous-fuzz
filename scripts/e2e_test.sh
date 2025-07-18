@@ -12,7 +12,7 @@ if [[ "$MODE" != "docker" && "$MODE" != "k8s" ]]; then
 fi
 
 # Temporary Variables
-readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/NishantBansal2003/go-fuzzing-example.git"
+readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly MAKE_TIMEOUT="270s"
 
@@ -424,7 +424,7 @@ done
 
 # Verify the expected number of open issues in the crash repo
 issue_count=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
-  "https://api.github.com/repos/NishantBansal2003/go-fuzzing-example/issues" | jq length)
+  "https://api.github.com/repos/go-continuous-fuzz/go-fuzzing-example/issues" | jq length)
 if [[ "${issue_count}" -ne 3 ]]; then
   echo "❌ ERROR: Expected 3 open issues, but found ${issue_count}"
   exit 1

@@ -6,10 +6,10 @@ metadata:
 data:
   go-continuous-fuzz.conf: |
     [Project]
-    project.src-repo = "https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/NishantBansal2003/go-fuzzing-example.git"
+    project.src-repo = "https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
     project.s3-bucket-name = "test-go-continuous-fuzz-bucket"
     [Fuzz Options]
-    fuzz.crash-repo = "https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/NishantBansal2003/go-fuzzing-example.git"
+    fuzz.crash-repo = "https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
     fuzz.pkgs-path = "parser"
     fuzz.pkgs-path = "stringutils"
     fuzz.pkgs-path = "tree"
