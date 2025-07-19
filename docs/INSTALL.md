@@ -73,7 +73,7 @@ make docker-run VOLUME_MOUNTS=<required>
 make test
 ```
 
-**Note:** Ensure the following AWS credentials are set as environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION`.
+**Note:** Ensure the following AWS credentials are set as environment variables when testing Kubernetes mode: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION`. If you are using temporary credentials (e.g., from an IAM role or `aws sts assume-role`), also set `AWS_SESSION_TOKEN`.
 
 ## Additional Information
 
