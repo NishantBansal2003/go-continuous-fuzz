@@ -11,6 +11,13 @@ import (
 	"strconv"
 )
 
+// FileInfo represents the name and size of a file, used for sorting files by
+// their size.
+type FileInfo struct {
+	Name string
+	Size int64
+}
+
 // MeasureCoverage runs a Go fuzz target using the inputs from its corpus
 // directory and returns the best observed coverage (in coverage bits).
 //
@@ -101,16 +108,27 @@ func MinimizeCorpus(ctx context.Context, logger *slog.Logger, pkgDir, corpusDir,
 		}
 		return fmt.Errorf("reading corpus dir: %w", err)
 	}
-	sort.Slice(entries, func(i, j int) bool {
-		fi, err := entries[i].Info()
-		if err != nil {
-			return false
+
+	// Collect file information for sorting by size.
+	var files []FileInfo
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
 		}
-		fj, err := entries[j].Info()
+		info, err := entry.Info()
 		if err != nil {
-			return false
+			return fmt.Errorf("getting file info for %s: %w",
+				entry.Name(), err)
 		}
-		return fi.Size() < fj.Size()
+		files = append(files, FileInfo{
+			Name: entry.Name(),
+			Size: info.Size(),
+		})
+	}
+
+	// Sort files from smallest to largest by size.
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Size < files[j].Size
 	})
 
 	bestCoverage := 0
@@ -118,13 +136,9 @@ func MinimizeCorpus(ctx context.Context, logger *slog.Logger, pkgDir, corpusDir,
 
 	// Iterate through each corpus file, measure its impact on coverage,
 	// and remove it if it does not improve or reduces the coverage.
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		srcPath := filepath.Join(corpusTargetDir, entry.Name())
-		dstPath := filepath.Join(cacheCorpusDir, entry.Name())
+	for _, file := range files {
+		srcPath := filepath.Join(corpusTargetDir, file.Name)
+		dstPath := filepath.Join(cacheCorpusDir, file.Name)
 
 		// Copy file to temporary corpus directory.
 		if err := copyFile(srcPath, dstPath, logger); err != nil {
@@ -146,9 +160,8 @@ func MinimizeCorpus(ctx context.Context, logger *slog.Logger, pkgDir, corpusDir,
 
 		if newCoverage < bestCoverage {
 			logger.Warn("nondeterministic fuzz target: coverage "+
-				"decreased", "file", entry.Name(),
-				"oldCoverage", bestCoverage, "newCoverage",
-				newCoverage)
+				"decreased", "file", file.Name, "oldCoverage",
+				bestCoverage, "newCoverage", newCoverage)
 		}
 
 		// Remove the file from both the source and cache directories
