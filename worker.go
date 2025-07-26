@@ -64,15 +64,17 @@ func (q *TaskQueue) Dequeue() (Task, bool) {
 }
 
 // WorkerGroup manages a group of fuzzing workers, their context, logger, Docker
-// client, configuration, shared task queue, and per-task timeout.
+// client, configuration, shared task queue, per-task timeout, and corpus last
+// minimized time.
 type WorkerGroup struct {
-	ctx         context.Context
-	logger      *slog.Logger
-	goGroup     *errgroup.Group
-	cli         *client.Client
-	cfg         *Config
-	taskQueue   *TaskQueue
-	taskTimeout time.Duration
+	ctx               context.Context
+	logger            *slog.Logger
+	goGroup           *errgroup.Group
+	cli               *client.Client
+	cfg               *Config
+	taskQueue         *TaskQueue
+	taskTimeout       time.Duration
+	corpusLastMinTime time.Time
 }
 
 // WorkersStartAndWait starts the specified number of workers and waits for all
@@ -247,6 +249,18 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 
 	wg.logger.Info("Successfully added/updated coverage report", "package",
 		pkg, "target", target)
+
+	// If this last time was greater than the prune interval then
+	// minimize the corpus.
+	if time.Since(wg.corpusLastMinTime) <
+		wg.cfg.Fuzz.CorpusMinimizeInterval {
+
+		if err := MinimizeCorpus(wg.ctx, wg.cfg, wg.logger, hostPkgPath,
+			hostCorpusPath, target); err != nil {
+			return fmt.Errorf("minimizing corpus for target %q: %w",
+				target, err)
+		}
+	}
 
 	return nil
 }

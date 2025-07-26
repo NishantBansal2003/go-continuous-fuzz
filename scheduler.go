@@ -65,6 +65,13 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 			return err
 		}
 
+		// Get the last time the corpus was pruned.
+		lastMinTime, err := s3s.getLastMinimizedTime()
+		if err != nil {
+			return fmt.Errorf("getting last minimized time: %w",
+				err)
+		}
+
 		// 3. Create a scheduler context for this fuzz iteration.
 		schedulerCtx, cancelCycle := context.WithCancel(ctx)
 
@@ -72,7 +79,8 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 		errChan := make(chan error, 1)
 
 		// Launch the fuzz worker scheduler as a goroutine.
-		go scheduleFuzzing(schedulerCtx, logger, cfg, errChan)
+		go scheduleFuzzing(schedulerCtx, logger, cfg, lastMinTime,
+			errChan)
 
 		// Set up the grace period for all workers to finish their
 		// tasks.
@@ -119,9 +127,15 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 				"up cycle")
 		}
 
+		// If this last time was greater than the prune interval then
+		// corpus is minimized, so update the last minimized time.
+		if time.Since(lastMinTime) < cfg.Fuzz.CorpusMinimizeInterval {
+			lastMinTime = time.Now()
+		}
+
 		// 5. Only upload the updated corpus and reports if the cycle
 		//    succeeded.
-		if err := s3s.uploadCorpusAndReports(); err != nil {
+		if err = s3s.uploadCorpusAndReports(lastMinTime); err != nil {
 			logger.Error("Failed to upload corpus and reports; " +
 				"aborting scheduler")
 			return err
@@ -137,7 +151,7 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 //
 // Returns an error if any worker fails.
 func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
-	errChan chan error) {
+	lastMinTime time.Time, errChan chan error) {
 
 	logger.Info("Starting fuzzing scheduler", "startTime", time.Now().
 		Format(time.RFC1123))
@@ -244,13 +258,14 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 	// Make sure to cancel all workers if any single worker errors.
 	g, workerCtx := errgroup.WithContext(ctx)
 	wg := &WorkerGroup{
-		ctx:         workerCtx,
-		logger:      logger,
-		goGroup:     g,
-		cli:         cli,
-		cfg:         cfg,
-		taskQueue:   taskQueue,
-		taskTimeout: perTargetTimeout,
+		ctx:               workerCtx,
+		logger:            logger,
+		goGroup:           g,
+		cli:               cli,
+		cfg:               cfg,
+		taskQueue:         taskQueue,
+		taskTimeout:       perTargetTimeout,
+		corpusLastMinTime: lastMinTime,
 	}
 
 	// Start and wait for all workers to finish or for the first
@@ -282,7 +297,7 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger, cfg *Config,
 	// Execute the command and check for errors, when the context wasn't
 	// canceled.
 	cmd := []string{"test", "-list=^Fuzz", "."}
-	output, err := runGoCommand(ctx, pkgPath, cmd)
+	output, err := runGoCommand(ctx, pkgPath, cmd, false)
 	if err != nil && ctx.Err() == nil {
 		return nil, fmt.Errorf("go test failed for %q: %w ", pkg, err)
 	}

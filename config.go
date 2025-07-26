@@ -99,6 +99,8 @@ type Fuzz struct {
 	SyncFrequency time.Duration `long:"sync-frequency" description:"Duration between consecutive fuzzing cycles" default:"24h"`
 
 	NumWorkers int `long:"num-workers" description:"Number of concurrent fuzzing workers" default:"1"`
+
+	CorpusMinimizeInterval time.Duration `long:"corpus-minimize-interval" description:"Interval between consecutive corpus minimizations" default:"7d"`
 }
 
 // Config encapsulates all top-level configuration parameters required to run
