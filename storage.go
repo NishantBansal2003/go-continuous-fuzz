@@ -181,8 +181,8 @@ func (s3s *S3Store) unzip() error {
 				return nil
 			}
 
-			if err := os.MkdirAll(filepath.Dir(fullPath),
-				0755); err != nil {
+			err := EnsureDirExists(filepath.Dir(fullPath))
+			if err != nil {
 				return fmt.Errorf("creating parent dir for "+
 					"%q: %w", fullPath, err)
 			}

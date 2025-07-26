@@ -252,8 +252,10 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string) error {
 
 	// Minimize the corpus if needed.
 	if wg.shouldCorpusMinimized {
-		if err := MinimizeCorpus(wg.ctx, wg.cfg, wg.logger, hostPkgPath,
-			hostCorpusPath, target); err != nil {
+		err := MinimizeCorpus(
+			wg.ctx, wg.logger.With("target", target).With("package",
+				pkg), hostPkgPath, hostCorpusPath, target)
+		if err != nil {
 			return fmt.Errorf("minimizing corpus for target %q: %w",
 				target, err)
 		}
