@@ -33,7 +33,7 @@ func MeasureCoverage(ctx context.Context, logger *slog.Logger, pkgDir,
 		fmt.Sprintf("-fuzztime=%dx", len(files)),
 		fmt.Sprintf("-test.fuzzcachedir=%s", corpusDir),
 	}
-	output, err := runGoCommand(ctx, pkgDir, fuzzCmd, true)
+	output, err := runGoCommand(ctx, pkgDir, fuzzCmd, "GODEBUG=fuzzdebug=1")
 	if err != nil {
 		return 0, fmt.Errorf("go test failed for %q: %w ", pkgDir, err)
 	}

@@ -252,7 +252,7 @@ func updateReport(ctx context.Context, pkg, target string, cfg *Config,
 	// Run `go test` for this target with coverage profiling enabled.
 	testCmd := []string{"test", fmt.Sprintf("-run=^%s$", target),
 		"-coverprofile=coverage.out", "-covermode=count"}
-	testOutput, err := runGoCommand(ctx, pkgPath, testCmd, false)
+	testOutput, err := runGoCommand(ctx, pkgPath, testCmd)
 	if err != nil {
 		return fmt.Errorf("go test failed for %q: %w ", pkg, err)
 	}
@@ -278,7 +278,7 @@ func updateReport(ctx context.Context, pkg, target string, cfg *Config,
 
 	coverCmd := []string{"tool", "cover", "-html=coverage.out", "-o",
 		reportPath}
-	if _, err := runGoCommand(ctx, pkgPath, coverCmd, false); err != nil {
+	if _, err := runGoCommand(ctx, pkgPath, coverCmd); err != nil {
 		return fmt.Errorf("go tool cover failed for %q: %w ", pkg, err)
 	}
 

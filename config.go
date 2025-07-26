@@ -88,7 +88,7 @@ type Project struct {
 
 // Fuzz defines all fuzzing-related flags and defaults, including the Git
 // repository URLs of the project where issues will be opened, which packages to
-// fuzz, timeout settings, and concurrency parameters.
+// fuzz, timeout settings, concurrency parameters and corpus minimize interval.
 //
 //nolint:lll
 type Fuzz struct {

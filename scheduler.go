@@ -71,8 +71,9 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 		// Get the last time the corpus was pruned.
 		lastMinTime, err := s3s.getLastMinimizedTime()
 		if err != nil {
-			return fmt.Errorf("getting last minimized time: %w",
-				err)
+			logger.Error("Failed to get last minimized time of " +
+				"corpus; aborting scheduler")
+			return err
 		}
 		// If this last time was greater than the prune interval then
 		// corpus should minimized, so update the last minimized time.
@@ -300,7 +301,7 @@ func listFuzzTargets(ctx context.Context, logger *slog.Logger, cfg *Config,
 	// Execute the command and check for errors, when the context wasn't
 	// canceled.
 	cmd := []string{"test", "-list=^Fuzz", "."}
-	output, err := runGoCommand(ctx, pkgPath, cmd, false)
+	output, err := runGoCommand(ctx, pkgPath, cmd)
 	if err != nil && ctx.Err() == nil {
 		return nil, fmt.Errorf("go test failed for %q: %w ", pkg, err)
 	}
