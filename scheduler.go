@@ -20,10 +20,12 @@ import (
 //  1. Cloning the Git repository specified in cfg.Project.SrcRepo.
 //  2. Downloading corpus and reports from S3 bucket specified in
 //     cfg.Project.S3BucketName.
-//  3. Launching scheduler goroutines to execute all fuzz targets for a portion
+//  3. If the time since the last corpus minimization exceeds
+//     cfg.Fuzz.CorpusMinimizeInterval, then minimize the corpus.
+//  4. Launching scheduler goroutines to execute all fuzz targets for a portion
 //     of cfg.Fuzz.SyncFrequency.
-//  4. Cleaning up the workspace.
-//  5. Uploading the updated corpus and reports to the S3 bucket.
+//  5. Cleaning up the workspace.
+//  6. Uploading the updated corpus and reports to the S3 bucket.
 //
 // The loop repeats until the parent context is canceled. Errors in cloning or
 // target discovery are returned immediately.
@@ -136,7 +138,7 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 
 		// 5. Only upload the updated corpus and reports if the cycle
 		//    succeeded.
-		if err = s3s.uploadCorpusAndReports(lastMinTime); err != nil {
+		if err := s3s.uploadCorpusAndReports(lastMinTime); err != nil {
 			logger.Error("Failed to upload corpus and reports; " +
 				"aborting scheduler")
 			return err
