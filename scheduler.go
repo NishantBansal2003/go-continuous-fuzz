@@ -65,11 +65,18 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 			return err
 		}
 
+		shouldCorpusMinimized := false
 		// Get the last time the corpus was pruned.
 		lastMinTime, err := s3s.getLastMinimizedTime()
 		if err != nil {
 			return fmt.Errorf("getting last minimized time: %w",
 				err)
+		}
+		// If this last time was greater than the prune interval then
+		// corpus should minimized, so update the last minimized time.
+		if time.Since(lastMinTime) < cfg.Fuzz.CorpusMinimizeInterval {
+			lastMinTime = time.Now()
+			shouldCorpusMinimized = true
 		}
 
 		// 3. Create a scheduler context for this fuzz iteration.
@@ -79,8 +86,8 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 		errChan := make(chan error, 1)
 
 		// Launch the fuzz worker scheduler as a goroutine.
-		go scheduleFuzzing(schedulerCtx, logger, cfg, lastMinTime,
-			errChan)
+		go scheduleFuzzing(schedulerCtx, logger, cfg, errChan,
+			shouldCorpusMinimized)
 
 		// Set up the grace period for all workers to finish their
 		// tasks.
@@ -127,12 +134,6 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 				"up cycle")
 		}
 
-		// If this last time was greater than the prune interval then
-		// corpus is minimized, so update the last minimized time.
-		if time.Since(lastMinTime) < cfg.Fuzz.CorpusMinimizeInterval {
-			lastMinTime = time.Now()
-		}
-
 		// 5. Only upload the updated corpus and reports if the cycle
 		//    succeeded.
 		if err = s3s.uploadCorpusAndReports(lastMinTime); err != nil {
@@ -151,7 +152,7 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 //
 // Returns an error if any worker fails.
 func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
-	lastMinTime time.Time, errChan chan error) {
+	errChan chan error, shouldCorpusMinimized bool) {
 
 	logger.Info("Starting fuzzing scheduler", "startTime", time.Now().
 		Format(time.RFC1123))
@@ -258,14 +259,14 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 	// Make sure to cancel all workers if any single worker errors.
 	g, workerCtx := errgroup.WithContext(ctx)
 	wg := &WorkerGroup{
-		ctx:               workerCtx,
-		logger:            logger,
-		goGroup:           g,
-		cli:               cli,
-		cfg:               cfg,
-		taskQueue:         taskQueue,
-		taskTimeout:       perTargetTimeout,
-		corpusLastMinTime: lastMinTime,
+		ctx:                   workerCtx,
+		logger:                logger,
+		goGroup:               g,
+		cli:                   cli,
+		cfg:                   cfg,
+		taskQueue:             taskQueue,
+		taskTimeout:           perTargetTimeout,
+		shouldCorpusMinimized: shouldCorpusMinimized,
 	}
 
 	// Start and wait for all workers to finish or for the first
