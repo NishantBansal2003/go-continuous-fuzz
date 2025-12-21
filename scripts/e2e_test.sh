@@ -12,7 +12,7 @@ if [[ "$MODE" != "docker" && "$MODE" != "k8s" ]]; then
 fi
 
 # Temporary Variables
-readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
+readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/NishantBansal2003/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly CORPUS_MINIMIZE_INTERVAL="4m"
 readonly ITERATIONS=3
@@ -25,7 +25,7 @@ readonly CORPUS_DIR_NAME="go-fuzzing-example_corpus"
 readonly CORPUS_ZIP_NAME="${CORPUS_DIR_NAME}.zip"
 readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/${CORPUS_DIR_NAME}"
 readonly FUZZ_RESULTS_PATH="${TEST_WORKDIR}/fuzz_results"
-readonly BUCKET_NAME="test-go-continuous-fuzz-bucket"
+readonly BUCKET_NAME="nishant-go-continuous-fuzz-bucket"
 readonly GCF_LOG="${FUZZ_RESULTS_PATH}/gcf.log"
 
 # Non-crashing fuzz target definitions (package:function)
@@ -156,7 +156,7 @@ git clone "${PROJECT_SRC_PATH}" "${PROJECT_DIR}"
 # Download and extract only the seed_corpus directory from the project tarball
 echo "Downloading seed corpus..."
 mkdir -p ${CORPUS_DIR_PATH}
-curl -L https://codeload.github.com/go-continuous-fuzz/go-fuzzing-example/tar.gz/main |
+curl -L https://codeload.github.com/NishantBansal2003/go-fuzzing-example/tar.gz/main |
   tar -xz --strip-components=2 -C ${CORPUS_DIR_PATH} go-fuzzing-example-main/seed_corpus
 
 # Create the S3 bucket (if not already) and upload the zipped corpus
@@ -508,7 +508,7 @@ done
 
 # Verify the expected number of open issues in the crash repo
 issue_count=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
-  "https://api.github.com/search/issues?q=repo:go-continuous-fuzz/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
+  "https://api.github.com/search/issues?q=repo:NishantBansal2003/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
 if [[ "${issue_count}" -ne 3 ]]; then
   echo "❌ ERROR: Expected 3 open issues, but found ${issue_count}"
   exit 1
