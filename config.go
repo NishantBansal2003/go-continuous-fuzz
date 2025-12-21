@@ -15,6 +15,10 @@ import (
 )
 
 const (
+	// InClusterWorkspacePath is the temporary in‑cluster path where the
+	// fuzzing workspace is located.
+	InClusterWorkspacePath = "/var/lib/go-continuous-fuzz"
+
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
@@ -43,10 +47,10 @@ const (
 	// for the fuzz corpus.
 	ContainerCorpusPath = "/go-continuous-fuzz-corpus"
 
-	// ContainerGracePeriod specifies the grace period to account for
-	// container startup overhead and ensures that all targets have
+	// FuzzGracePeriod specifies the grace period to account for
+	// container/pod startup overhead and ensures that all targets have
 	// sufficient time to complete.
-	ContainerGracePeriod = 20 * time.Second
+	FuzzGracePeriod = 20 * time.Second
 
 	// LogFilename is the filename where go-continuous-fuzz writes its log
 	// output, in addition to writing it to stdout.
@@ -79,7 +83,7 @@ var (
 //
 //nolint:lll
 type Project struct {
-	WorkSpacePath string `long:"workspace-path" description:"Absolute path to the directory where go-continuous-fuzz generated files are stored"`
+	WorkSpacePath string `long:"workspace-path" description:"Absolute path to the directory where go-continuous-fuzz generated files are stored in docker mode"`
 
 	SrcRepo string `long:"src-repo" description:"Git repo URL of the project to fuzz" required:"true"`
 
@@ -107,7 +111,8 @@ type Project struct {
 
 // Fuzz defines all fuzzing-related flags and defaults, including the Git
 // repository URLs of the project where issues will be opened, which packages to
-// fuzz, timeout settings, concurrency parameters and corpus minimize interval.
+// fuzz, timeout settings, concurrency parameters, corpus minimize interval,
+// whether to run in‑cluster or in Docker and k8s namespace.
 //
 //nolint:lll
 type Fuzz struct {
@@ -122,6 +127,10 @@ type Fuzz struct {
 	CorpusMinimizeInterval time.Duration `long:"corpus-minimize-interval" description:"Interval between consecutive corpus minimizations" default:"7d"`
 
 	Iterations int `long:"iterations" description:"Number of fuzzing cycles to run (0 means to run forever)" default:"0"`
+
+	InCluster bool `long:"in-cluster" description:"Whether to run inside a Kubernetes cluster. Defaults to Docker if unset."`
+
+	NameSpace string `long:"namespace" description:"Kubernetes namespace to use (used when --in-cluster is set)" default:"default"`
 }
 
 // Config encapsulates all top-level configuration parameters required to run
@@ -206,19 +215,28 @@ func loadConfig() (*Config, error) {
 
 	// Set the absolute path to the workspace directory.
 	//
+	// Use a fixed workspace path when fuzzing is running in in-cluster
+	// mode.
+	//
 	// If the user specifies --workspace-path, use that path directly.
-	// Otherwise, create a temporary directory automatically.
+	// Otherwise, create a temporary directory automatically in docker mode.
 	//
 	// Having a fixed workspace path is especially useful for debugging,
 	// since the generated files will persist if go-continuous-fuzz crashes.
 	var tmpDirPath string
-	if cfg.Project.WorkSpacePath == "" {
-		tmpDirPath, err = os.MkdirTemp("", "go-continuous-fuzz-")
-		if err != nil {
-			return nil, err
-		}
+	if cfg.Fuzz.InCluster {
+		tmpDirPath = InClusterWorkspacePath
 	} else {
-		tmpDirPath = CleanAndExpandPath(cfg.Project.WorkSpacePath)
+		if cfg.Project.WorkSpacePath == "" {
+			tmpDirPath, err = os.MkdirTemp("",
+				"go-continuous-fuzz-")
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			tmpDirPath = CleanAndExpandPath(
+				cfg.Project.WorkSpacePath)
+		}
 	}
 
 	cfg.Project.SrcDir = filepath.Join(tmpDirPath, TmpProjectDir)

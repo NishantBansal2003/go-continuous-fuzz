@@ -16,6 +16,8 @@ You can configure **go-continuous-fuzz** using either conifg file or command-lin
 | `fuzz.num-workers`              | Number of concurrent fuzzing workers                         | No       | 1                                                     |
 | `fuzz.corpus-minimize-interval` | Interval between consecutive corpus minimizations            | No       | 7d                                                    |
 | `fuzz.iterations`               | Number of fuzzing cycles to run (0 means to run forever)     | No       | 0                                                     |
+| `fuzz.in-cluster`               | Run in-cluster (Kubernetes). Defaults to Docker. if unset.   | No       | False                                                 |
+| `fuzz.namespace`                | Kubernetes namespace to use (used with --in-cluster).        | No       | default                                               |
 
 **Repository URL formats:**
 For `project.src-repo`:
@@ -83,6 +85,38 @@ The file structure of the coverage reports is as follows:
   - A `.json` history file tracking daily coverage changes for each package/target.
   - Subdirectories structured as `pkg/fuzzTarget/` containing daily HTML coverage reports (e.g., `2025-07-12.html`) generated via `go tool cover`.
 
+**Running in Kubernetes Guidelines:**
+
+When the flag `--fuzz.in-cluster` is set, `go-continuous-fuzz` runs inside the Kubernetes cluster. This means the application must be executed within a Pod.
+Before launching the Pod, install the standard Helm chart to set up the necessary Kubernetes resources:
+
+```sh
+helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" --namespace "${K8S_NAMESPACE}"
+```
+
+The project uses specific fixed resource names for in-cluster fuzzing. These include:
+
+- **ServiceAccount**: `go-continuous-fuzz-sa`
+- **PersistentVolumeClaim (PVC)**: `go-continuous-fuzz-pvc`
+
+Make sure to use these exact names when creating the Pod, ConfigMap/Secret, and PVC.
+Each fuzz target requires **2 GB of memory** and **1 CPU**. Ensure that your PVC requests adequate storage, or the application may behave unexpectedly (e.g., fuzzing jobs remain pending and then stop).
+Since the PVC is shared across multiple pods/jobs, the `accessModes` for the PVC must be set to `ReadWriteMany`. Make sure that the underlying StorageClass supports the `ReadWriteMany` access mode.
+We use a standard volume mount path inside the cluster:
+
+```
+mountPath: /var/lib/go-continuous-fuzz
+```
+
+Additionally:
+
+- AWS credentials must be provided as Kubernetes Secrets, which should be mounted into the Pod as environment variables or as files using a volume mount.
+- The configuration file must be mounted (via ConfigMap or Secret) to the path `/root/.go-continuous-fuzz/` with the filename `go-continuous-fuzz.conf`.
+
+For example manifests (Pod, PVC, ConfigMap), refer to the [manifests directory](../manifests/). These are primarily intended for testing purposes, but you may use your own setup as long as it follows the guidelines described above.
+
+Note: In the Docker setup, each fuzz target runs in a separate Docker container, with a fixed resource limit of **2 GB of memory** and **1 CPU** per container. In the Kubernetes setup, each fuzz target runs in a separate Pod with the same fixed resource constraints. This isolation ensures that `go-continuous-fuzz` can handle out-of-memory (OOM) errors in one fuzz target without affecting the execution of others.
+
 ## Notes
 
 * We assume that all files needed by tests are placed under `testdata/` in the respective package path. If a test depends on files outside of `testdata/`, those files will be ignored. This may cause GCF to report false positive errors, which GCF considers reasonable, since by convention all files needed by tests are supposed to go in `testdata/`.
@@ -113,6 +147,9 @@ The file structure of the coverage reports is as follows:
 8. **Automatic Issue Closure:**
    For each fuzz target, GitHub issues will be automatically closed if the crash is no longer reproducible, indicating that the issue has been resolved.
 
+9. **Fuzzing Execution Modes:**
+   Fuzzing can be run locally, where each fuzz target runs in a separate Docker container. Alternatively, you can use the `--fuzz.in-cluster` flag to run inside a Kubernetes cluster, where each fuzz target is executed as a separate Kubernetes Job, spawning individual Pods.
+
 ## Running go-continuous-fuzz
 
 1. **Clone the Repository**
@@ -139,7 +176,11 @@ The file structure of the coverage reports is as follows:
      --fuzz.num-workers=<number_of_workers>
      --fuzz.corpus-minimize-interval=<time>
      --fuzz.iterations=<number_of_iterations>
+     --fuzz.in-cluster
+     --fuzz.namespace=<namespace>
    ```
+
+Note: Ensure the target namespace `<namespace>` exists prior to running this command.
 
 3. **Run the Fuzzing Engine:**  
    With your config file configured, start the fuzzing process. Run:
