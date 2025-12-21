@@ -282,7 +282,7 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 		}
 	} else {
 		// Create a Docker client for running containers.
-		cli, err := client.NewClientWithOpts(client.FromEnv,
+		cli, err = client.NewClientWithOpts(client.FromEnv,
 			client.WithAPIVersionNegotiation())
 		if err != nil {
 			errChan <- fmt.Errorf("failed to start docker client: "+
