@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,14 +12,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 )
-
-// FuzzRunner abstracts Kubernetes or Docker fuzz execution
-type FuzzRunner interface {
-	Start() (string, error)
-	Stop(ID string) error
-	WaitAndGetLogs(ID string, pkg string, target string,
-		fuzzCrashChan chan fuzzCrash, errChan chan error)
-}
 
 // Task represents a single fuzz target job, containing the package path and the
 // specific target name to execute.
@@ -125,12 +116,9 @@ func (wg *WorkerGroup) runWorker(workerID int) error {
 		)
 
 		// Initialize a GitHub client for issue verification.
-		//
-		// For issue verification, even in in-cluster mode, a Docker
-		// container will be spun up to verify issue reproducibility.
 		gh, err := NewGitHubRepo(wg.ctx, wg.logger.With("target",
 			task.Target).With("package", task.PackagePath),
-			wg.dockerClient, wg.cfg)
+			wg.dockerClient, wg.k8sClientSet, wg.cfg)
 		if err != nil {
 			return fmt.Errorf("error initializing GitHub client: "+
 				"%w", err)
@@ -211,9 +199,19 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string,
 		FuzzGracePeriod)
 	defer cancel()
 
-	// Prepare runner configuration.
-	runner := wg.createFuzzRunner(fuzzCtx, pkg, target, fuzzBinaryPath,
-		corpusPath)
+	// Prepare fuzz runner configuration.
+	fr := &FuzzRunnerConfig{
+		ctx:            fuzzCtx,
+		logger:         wg.logger,
+		clientset:      wg.k8sClientSet,
+		cli:            wg.dockerClient,
+		cfg:            wg.cfg,
+		pkg:            pkg,
+		target:         target,
+		fuzzBinaryPath: fuzzBinaryPath,
+		corpusPath:     corpusPath,
+	}
+	runner := fr.CreateFuzzRunner()
 
 	// Start the fuzzing runner.
 	fuzzID, err := runner.Start()
@@ -290,48 +288,4 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string,
 	}
 
 	return nil
-}
-
-// createFuzzRunner initializes the appropriate fuzzing runner (either
-// Kubernetes job or Docker container) based on the execution mode.
-func (wg *WorkerGroup) createFuzzRunner(ctx context.Context, pkg, target,
-	fuzzBinaryPath, corpusPath string) FuzzRunner {
-
-	// Prepare the base arguments for the test command to run the specific
-	// fuzz target in container/pod.
-	cmd := []string{
-		fmt.Sprintf("./%s.test", target),
-		fmt.Sprintf("-test.fuzz=^%s$", target),
-		"-test.parallel=1",
-	}
-
-	// Append fuzz cache directory path depending on the mode
-	if wg.cfg.Fuzz.InCluster {
-		cmd = append(cmd, fmt.Sprintf("-test.fuzzcachedir=%s",
-			corpusPath))
-		jobName := strings.ToLower(fmt.Sprintf("fuzz-job-%s-%s", pkg,
-			target))
-
-		return &Cluster{
-			ctx:            ctx,
-			logger:         wg.logger,
-			jobName:        jobName,
-			clientset:      wg.k8sClientSet,
-			cfg:            wg.cfg,
-			fuzzBinaryPath: fuzzBinaryPath,
-			cmd:            cmd,
-		}
-	}
-
-	cmd = append(cmd, fmt.Sprintf("-test.fuzzcachedir=%s",
-		ContainerCorpusPath))
-
-	return &Container{
-		ctx:            ctx,
-		logger:         wg.logger,
-		cli:            wg.dockerClient,
-		fuzzBinaryPath: fuzzBinaryPath,
-		hostCorpusPath: corpusPath,
-		cmd:            cmd,
-	}
 }

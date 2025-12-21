@@ -173,7 +173,7 @@ func (c *Cluster) WaitAndGetLogs(jobName, pkg, target string,
 	}
 
 	// Retrieve the job status and send error (if any) on errChan.
-	errChan <- c.waitForJobCompletion()
+	errChan <- c.Wait(jobName)
 }
 
 // waitForPod waits for a pod associated with the job to be created and reach a
@@ -235,12 +235,11 @@ func (c *Cluster) waitForPod() (*corev1.Pod, error) {
 	return pod, nil
 }
 
-// waitForJobCompletion waits for the Kubernetes Job to complete by either
-// succeeding or failing. It returns nil if the job succeeds, or an error if the
-// job fails or a watch error occurs. If the context is cancelled or times out,
-// it returns nil
-func (c *Cluster) waitForJobCompletion() error {
-	fieldSel := fmt.Sprintf("metadata.name=%s", c.jobName)
+// Wait waits for the Kubernetes Job to complete by either succeeding or
+// failing. It returns nil if the job succeeds, or an error if the job fails or
+// a watch error occurs.
+func (c *Cluster) Wait(ID string) error {
+	fieldSel := fmt.Sprintf("metadata.name=%s", ID)
 	lw := &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object,
 			error) {
@@ -276,14 +275,14 @@ func (c *Cluster) waitForJobCompletion() error {
 				return true, nil
 			case job.Status.Failed > 0:
 				return false, fmt.Errorf("fuzz job %q failed",
-					c.jobName)
+					ID)
 			default:
 				return false, nil
 			}
 		})
 
 	if err != nil && c.ctx.Err() == nil {
-		return fmt.Errorf("job %q watch failed: %w", c.jobName, err)
+		return fmt.Errorf("job %q watch failed: %w", ID, err)
 	}
 	return nil
 }
