@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Task represents a single fuzz target job, containing the package path and the
@@ -63,13 +64,14 @@ func (q *TaskQueue) Dequeue() (Task, bool) {
 }
 
 // WorkerGroup manages a group of fuzzing workers, their context, logger, Docker
-// client, configuration, shared task queue, per-task timeout, and if corpus
-// should be minimized or not.
+// or Kubernetes client, configuration, shared task queue, per-task timeout, and
+// if corpus should be minimized or not.
 type WorkerGroup struct {
 	ctx                  context.Context
 	logger               *slog.Logger
 	goGroup              *errgroup.Group
-	cli                  *client.Client
+	dockerClient         *client.Client
+	k8sClientSet         *kubernetes.Clientset
 	cfg                  *Config
 	taskQueue            *TaskQueue
 	taskTimeout          time.Duration
