@@ -14,6 +14,8 @@ data:
     fuzz.pkgs-path = "stringutils"
     fuzz.pkgs-path = "tree"
     fuzz.sync-frequency = "3m"
+    fuzz.corpus-minimize-interval = "4m"
+    fuzz.iterations = 3
     fuzz.num-workers = 3
     fuzz.in-cluster = true
     fuzz.namespace = "go-continuous-fuzz-ns"
