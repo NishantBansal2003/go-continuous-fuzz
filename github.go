@@ -307,6 +307,7 @@ func (gh *GitHubRepo) reproduceIssue(pkg, target string, testCmd []string,
 			target),
 		corpusPath: filepath.Join(gh.cfg.Project.CorpusDir, pkg,
 			"testdata", "fuzz"),
+		cmd: testCmd,
 	}
 	runner := fr.CreateFuzzRunner()
 
