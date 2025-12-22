@@ -9,6 +9,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -294,7 +295,7 @@ func (c *Cluster) Stop(jobName string) error {
 		context.Background(), jobName, metav1.DeleteOptions{
 			PropagationPolicy: &propagationPolicy,
 		})
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil

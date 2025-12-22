@@ -228,8 +228,8 @@ func (wg *WorkerGroup) executeFuzzTarget(pkg string, target string,
 	// already stopped, so this call won't cause any issues anyway.
 	defer func() {
 		if err := runner.Stop(fuzzID); err != nil {
-			wg.logger.Error("Failed to fuzz runner", "error", err,
-				"fuzzID", fuzzID)
+			wg.logger.Error("Failed to stop fuzz runner", "error",
+				err, "fuzzID", fuzzID)
 		}
 	}()
 

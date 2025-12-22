@@ -268,20 +268,13 @@ if [[ ${MODE} == "k8s" ]]; then
   fi
 
   # Stream logs with timeout
-  echo "Streaming logs from pod for ${MAKE_TIMEOUT} seconds..."
-  kubectl logs -f "${POD_NAME}" &
-  sleep "${MAKE_TIMEOUT}"
+  echo "Streaming logs from pod..."
+  kubectl logs -f "${POD_NAME}"
 
-  # Gracefully stop the fuzzing process
-  echo "Stopping fuzzing process in pod..."
-  if ! kubectl exec "${POD_NAME}" -- pkill -SIGINT -f go-continuous-fuzz; then
-    echo "❌ Failed to send SIGINT to go-continuous-fuzz. Process may have exited early."
-    exit 1
-  fi
-  sleep 20s
-
-  # Collect final logs
-  kubectl logs "${POD_NAME}" >>"${MAKE_LOG}"
+  # In k8s, the logs are stored at /root/.go-continuous-fuzz/logs/gcf.log
+  # inside the cluster, which is not accessible from the host filesystem.
+  # Therefore, we stream the pod logs to the GCF_LOG file on the host.
+  kubectl logs "${POD_NAME}" >>"${GCF_LOG}"
 
   # Clean up pod
   kubectl delete pod "${POD_NAME}" --ignore-not-found

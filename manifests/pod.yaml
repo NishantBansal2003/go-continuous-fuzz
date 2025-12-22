@@ -13,14 +13,19 @@ spec:
         - secretRef:
             name: aws-creds
       volumeMounts:
-        - name: config
+        - name: gcf-path
           mountPath: /root/.go-continuous-fuzz/
+        - name: config
+          mountPath: /root/.go-continuous-fuzz/go-continuous-fuzz.conf
+          subPath: go-continuous-fuzz.conf
         - name: shared
           mountPath: /var/lib/go-continuous-fuzz
   volumes:
     - name: config
       configMap:
         name: go-continuous-fuzz-config
+    - name: gcf-path
+      emptyDir: {}
     - name: shared
       persistentVolumeClaim:
         claimName: go-continuous-fuzz-pvc
