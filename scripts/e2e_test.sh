@@ -248,12 +248,16 @@ if [[ ${MODE} == "k8s" ]]; then
     exit 1
   fi
 
-  for manifest in pvc.yaml pod.yaml; do
-    if ! kubectl apply -f "./manifests/${manifest}"; then
-      echo "❌ Failed to apply ${manifest}"
-      exit 1
-    fi
-  done
+  # Substitute PVC storage size and apply
+  if ! sed "s|\${PVC_STORAGE_SIZE}|8Gi|g" ./manifests/pvc.yaml | kubectl apply -f -; then
+    echo "❌ Failed to apply pvc.yaml"
+    exit 1
+  fi
+
+  if ! kubectl apply -f "./manifests/pod.yaml"; then
+    echo "❌ Failed to apply pod.yaml"
+    exit 1
+  fi
 
   # Wait for the pod to be ready
   echo "Waiting for pod '${POD_NAME}' to be ready..."
