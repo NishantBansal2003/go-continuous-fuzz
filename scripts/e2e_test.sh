@@ -373,34 +373,34 @@ done
 
 # Ensure for each fuzz target: exactly one of "Issue created" or "Issue already exists" exists,
 # and "Crash still reproducible" appears only with "Issue already exists".
-# echo "Verifying required issue-related log entries in ${GCF_LOG}..."
-# for target in "${CRASHING_FUZZ_TARGETS[@]}"; do
-#   IFS=':' read -r package target <<<"${target}"
+echo "Verifying required issue-related log entries in ${GCF_LOG}..."
+for target in "${CRASHING_FUZZ_TARGETS[@]}"; do
+  IFS=':' read -r package target <<<"${target}"
 
-#   crash_msg="msg=\"Crash still reproducible; keeping GitHub issue open\" target=${target} package=${package}"
-#   created_msg="msg=\"Issue created successfully\" target=${target} package=${package}"
-#   exists_msg="msg=\"Issue already exists\" target=${target} package=${package}"
+  crash_msg="msg=\"Crash still reproducible; keeping GitHub issue open\" target=${target} package=${package}"
+  created_msg="msg=\"Issue created successfully\" target=${target} package=${package}"
+  exists_msg="msg=\"Issue already exists\" target=${target} package=${package}"
 
-#   crash_exists=$(grep -q -- "${crash_msg}" "${GCF_LOG}" && echo true || echo false)
-#   created_exists=$(grep -q -- "${created_msg}" "${GCF_LOG}" && echo true || echo false)
-#   exists_exists=$(grep -q -- "${exists_msg}" "${GCF_LOG}" && echo true || echo false)
+  crash_exists=$(grep -q -- "${crash_msg}" "${GCF_LOG}" && echo true || echo false)
+  created_exists=$(grep -q -- "${created_msg}" "${GCF_LOG}" && echo true || echo false)
+  exists_exists=$(grep -q -- "${exists_msg}" "${GCF_LOG}" && echo true || echo false)
 
-#   # Validate issue logs and reproducibility
-#   if [ "${created_exists}" = "${exists_exists}" ]; then
-#     echo "❌ ERROR: Exactly one of 'Issue already exists' or 'Issue created successfully' must exist for target=${target} package=${package}"
-#     exit 1
-#   fi
+  # Validate issue logs and reproducibility
+  if [ "${created_exists}" = "${exists_exists}" ]; then
+    echo "❌ ERROR: Exactly one of 'Issue already exists' or 'Issue created successfully' must exist for target=${target} package=${package}"
+    exit 1
+  fi
 
-#   if ${exists_exists} && ! ${crash_exists}; then
-#     echo "❌ ERROR: 'Issue already exists' present but no corresponding reproducibility log for target=${target} package=${package}"
-#     exit 1
-#   fi
+  if ${exists_exists} && ! ${crash_exists}; then
+    echo "❌ ERROR: 'Issue already exists' present but no corresponding reproducibility log for target=${target} package=${package}"
+    exit 1
+  fi
 
-#   if ${created_exists} && ${crash_exists}; then
-#     echo "❌ ERROR: 'Issue created successfully' exists but reproducibility log also present for target=${target} package=${package}"
-#     exit 1
-#   fi
-# done
+  if ${created_exists} && ${crash_exists}; then
+    echo "❌ ERROR: 'Issue created successfully' exists but reproducibility log also present for target=${target} package=${package}"
+    exit 1
+  fi
+done
 
 # List of patterns that should NOT be present in the log
 FORBIDDEN_PATTERNS=(

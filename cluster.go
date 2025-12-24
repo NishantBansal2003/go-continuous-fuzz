@@ -290,7 +290,7 @@ func (c *Cluster) Wait(ID string) error {
 
 // Stop deletes a specified Kubernetes job and its associated pods.
 func (c *Cluster) Stop(jobName string) error {
-	propagationPolicy := metav1.DeletePropagationBackground
+	propagationPolicy := metav1.DeletePropagationForeground
 	err := c.clientset.BatchV1().Jobs(c.cfg.Fuzz.NameSpace).Delete(
 		context.Background(), jobName, metav1.DeleteOptions{
 			PropagationPolicy: &propagationPolicy,

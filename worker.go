@@ -126,15 +126,15 @@ func (wg *WorkerGroup) runWorker(workerID int) error {
 
 		// The worker will verify and close any open GitHub issues
 		// related to the fuzz target.
-		// err = gh.verifyAndCloseResolvedIssues(task.PackagePath,
-		// 	task.Target)
-		// if err != nil {
-		// 	if wg.ctx.Err() != nil {
-		// 		return nil
-		// 	}
-		// 	return fmt.Errorf("failed to verify and close open "+
-		// 		"issues: %w", err)
-		// }
+		err = gh.verifyAndCloseResolvedIssues(task.PackagePath,
+			task.Target)
+		if err != nil {
+			if wg.ctx.Err() != nil {
+				return nil
+			}
+			return fmt.Errorf("failed to verify and close open "+
+				"issues: %w", err)
+		}
 
 		wg.logger.Info(
 			"Worker starting fuzzing", "workerID", workerID,
