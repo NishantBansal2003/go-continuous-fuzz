@@ -46,7 +46,7 @@ func (fr *FuzzRunnerConfig) CreateFuzzRunner() FuzzRunner {
 
 	// Append fuzz cache directory path depending on the mode
 	if fr.cfg.Fuzz.InCluster {
-		timestamp := time.Now().UnixNano()
+		timestamp := time.Now().UnixMicro()
 		jobName := strings.ToLower(fmt.Sprintf("fuzz-job-%s-%s-%d",
 			fr.pkg, fr.target, timestamp))
 
