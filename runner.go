@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/client"
 	"k8s.io/client-go/kubernetes"
@@ -45,8 +46,9 @@ func (fr *FuzzRunnerConfig) CreateFuzzRunner() FuzzRunner {
 
 	// Append fuzz cache directory path depending on the mode
 	if fr.cfg.Fuzz.InCluster {
-		jobName := strings.ToLower(fmt.Sprintf("fuzz-job-%s-%s", fr.pkg,
-			fr.target))
+		timestamp := time.Now().UnixNano()
+		jobName := strings.ToLower(fmt.Sprintf("fuzz-job-%s-%s-%d",
+			fr.pkg, fr.target, timestamp))
 
 		return &Cluster{
 			ctx:            fr.ctx,
