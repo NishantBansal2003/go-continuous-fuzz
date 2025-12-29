@@ -55,6 +55,15 @@ func run() int {
 
 	defer cleanupWorkspace(logger, cfg)
 
+	// Announce where the fuzzing workload will execute and where its
+	// workspace lives.
+	mode := "Docker"
+	if cfg.Fuzz.InCluster {
+		mode = "Kubernetes"
+	}
+	logger.Info("Running fuzzing jobs", "mode", mode, "workspacePath",
+		filepath.Dir(cfg.Project.SrcDir))
+
 	// Create a cancellable context to manage the application's lifecycle.
 	appCtx, cancelApp := context.WithCancel(context.Background())
 	defer cancelApp()

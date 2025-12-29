@@ -14,10 +14,11 @@ go-continuous-fuzz is a Go native fuzzing tool that automatically detects and ru
 - **Coverage Reports:** Saves the generated coverage reports for each fuzz target to the specified AWS S3 bucket, enabling coverage history comparison to help improve fuzz targets.
 - **Corpus Minimization:** Periodically remove inputs that do not improve or reduce coverage to prevent corpus bloat.
 - **Automatic Issue Closure:** Automatically closes GitHub issues for a fuzz target when the crash is no longer reproducible.
+- **Fuzzing Execution Modes:** Fuzzing can run locally in separate Docker containers per target, or in a Kubernetes cluster using `--fuzz.in-cluster`, where each target runs as a separate Job with its own Pod.
 
 ## Deployment & Execution
 
-go-continuous-fuzz can be deployed as a long-running service on any cloud instance (e.g., AWS EC2, GCP Compute Engine, or DigitalOcean Droplet). Once initiated, the application autonomously manages its execution cycles, running continuously and restarting the fuzzing process at intervals defined in the configuration file or via command-line flags.
+go-continuous-fuzz can be deployed as a long-running service on any cloud instance when running in Docker mode. Once initiated, the application autonomously manages its execution cycles, running continuously and restarting the fuzzing process at intervals defined in the configuration file or via command-line flags. Alternatively, it can be deployed on a Kubernetes cluster, where each fuzzing process runs as a Kubernetes Job that spawns Pods.
 
 ## For more information, see:
 
