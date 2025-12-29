@@ -1,0 +1,46 @@
+serviceAccount:
+  automount: true
+  name: "go-continuous-fuzz-sa"
+
+rbac:
+  roleName: "go-continuous-fuzz-role"
+  roleBindingName: "go-continuous-fuzz-rb"
+
+aws:
+  secretName: "go-continuous-fuzz-aws-creds"
+  accessKeyId: ""
+  secretAccessKey: ""
+  region: ""
+  sessionToken: ""
+
+github:
+  authToken: ""
+
+configMap:
+  name: "go-continuous-fuzz-config"
+
+project:
+  workspacePath: "/var/lib/go-continuous-fuzz"
+  logdir: "/var/lib/go-continuous-fuzz/logs"
+  srcRepo: ""
+  s3BucketName: ""
+
+fuzz:
+  inCluster: true
+  crashRepo: ""
+  pkgsPath:
+  syncFrequency: ""
+  corpusMinimizeInterval: ""
+  iterations:
+  numWorkers:
+
+pod:
+  name: "go-continuous-fuzz-pod"
+  container:
+    name: "go-continuous-fuzz-container"
+    image: "go-continuous-fuzz"
+    imagePullPolicy: "Never"
+
+pvc:
+  name: "go-continuous-fuzz-pvc"
+  storage: "8Gi"
