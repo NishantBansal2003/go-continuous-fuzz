@@ -68,7 +68,7 @@ func (c *Cluster) Start() (string, error) {
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "go-continuous-fuzz-src",
-									MountPath: InClusterWorkspacePath,
+									MountPath: filepath.Dir(c.cfg.Project.SrcDir),
 								},
 							},
 							Resources: corev1.ResourceRequirements{

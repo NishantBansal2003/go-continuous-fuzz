@@ -53,19 +53,16 @@ func run() int {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	logger := slog.New(slog.NewTextHandler(multiWriter, nil))
 
+	defer cleanupWorkspace(logger, cfg)
+
 	// Announce where the fuzzing workload will execute and where its
 	// workspace lives.
+	mode := "Docker"
 	if cfg.Fuzz.InCluster {
-		logger.Info("Running fuzzing jobs inside Kubernetes",
-			"workspacePath", InClusterWorkspacePath)
-	} else {
-		logger.Info("Running fuzzing jobs in Docker container",
-			"workspacePath", filepath.Dir(cfg.Project.SrcDir))
-
-		// Perform workspace cleanup when running in Docker (i.e., not
-		// in‑cluster).
-		defer cleanupWorkspace(logger, cfg)
+		mode = "Kubernetes"
 	}
+	logger.Info("Running fuzzing jobs", "mode", mode, "workspacePath",
+		filepath.Dir(cfg.Project.SrcDir))
 
 	// Create a cancellable context to manage the application's lifecycle.
 	appCtx, cancelApp := context.WithCancel(context.Background())

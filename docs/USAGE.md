@@ -33,7 +33,7 @@ Note: The authentication token is used to open issues on GitHub whenever a crash
 In short, issues will be created from the GitHub account associated with the provided authentication token.
 Similar behavior is followed when closing issues.
 
-**AWS S3 Storage Guidelines**
+## AWS S3 Storage Guidelines
 
 1. **Credentials**
 
@@ -71,7 +71,7 @@ Similar behavior is followed when closing issues.
 
 Note: The updated corpus will be uploaded to the S3 bucket only if the fuzzing cycle completes successfully without any errors or user interruptions.
 
-**Coverage Reports**
+## Coverage Reports
 
 Coverage reports are stored in the specified AWS S3 bucket. This bucket can be configured to serve as a static website for viewing the reports. The entry point for the reports is the `index.html` file. Users should ensure that the appropriate settings are enabled in the S3 bucket to allow static website hosting.
 
@@ -85,35 +85,33 @@ The file structure of the coverage reports is as follows:
   - A `.json` history file tracking daily coverage changes for each package/target.
   - Subdirectories structured as `pkg/fuzzTarget/` containing daily HTML coverage reports (e.g., `2025-07-12.html`) generated via `go tool cover`.
 
-**Running in Kubernetes Guidelines:**
+## Running in Kubernetes Cluster
 
 When the flag `--fuzz.in-cluster` is set, `go-continuous-fuzz` runs inside the Kubernetes cluster. This means the application must be executed within a Pod.
+
+### Helm Chart Installation
+
 Before launching the Pod, install the standard Helm chart to set up the necessary Kubernetes resources:
 
 ```sh
 helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" --namespace "${K8S_NAMESPACE}"
 ```
 
-The project uses specific fixed resource names for in-cluster fuzzing. These include:
+Note: Configure the required AWS and GitHub secrets in the [Helm chart](../go-continuous-fuzz-chart/values.yaml) or pass them using `--set <key>=<value>` before deploying the go-continuous-fuzz project.
 
-- **ServiceAccount**: `go-continuous-fuzz-sa`
-- **PersistentVolumeClaim (PVC)**: `go-continuous-fuzz-pvc`
+**Important:** The Helm chart provided values are mainly for example/testing purposes. Make sure to change them according to your project requirements while following the guidelines below.
 
-Make sure to use these exact names when creating the Pod, ConfigMap/Secret, and PVC.
-Each fuzz target requires **2 GB of memory** and **1 CPU**. Ensure that your PVC requests adequate storage, or the application may behave unexpectedly (e.g., fuzzing jobs remain pending and then stop).
-Since the PVC is shared across multiple pods/jobs, the `accessModes` for the PVC must be set to `ReadWriteMany`. Make sure that the underlying StorageClass supports the `ReadWriteMany` access mode.
-We use a standard volume mount path inside the cluster:
+1. The project relies on specific, fixed resource names for in-cluster fuzzing. When creating the Pod, ConfigMap/Secret, and PersistentVolumeClaim, make sure to use these exact names to ensure everything works correctly. These include:
+   - **ServiceAccount**: `go-continuous-fuzz-sa`
+   - **PersistentVolumeClaim (PVC)**: `go-continuous-fuzz-pvc`
 
-```
-mountPath: /var/lib/go-continuous-fuzz
-```
+2. Each fuzz target requires **2 GB of memory** and **1 CPU**. Ensure that your PVC requests adequate storage, or the application may behave unexpectedly (e.g., fuzzing jobs remain pending and then stop).
 
-Additionally:
+3. Since the PVC is shared across multiple pods/jobs, the `accessModes` for the PVC must be set to `ReadWriteMany`. Make sure that the underlying StorageClass supports the `ReadWriteMany` access mode.
 
-- AWS credentials must be provided as Kubernetes Secrets, which should be mounted into the Pod as environment variables or as files using a volume mount.
-- The configuration file must be mounted (via ConfigMap or Secret) to the path `/root/.go-continuous-fuzz/` with the filename `go-continuous-fuzz.conf`.
+4. We use a standard volume mount path inside the cluster, so make sure `project.workspace-path` is set in the Helm chart. This is where the PersistentVolumeClaim will be mounted for corpus sharing across the cluster.
 
-For example manifests (Pod, PVC, ConfigMap), refer to the [manifests directory](../manifests/). These are primarily intended for testing purposes, but you may use your own setup as long as it follows the guidelines described above.
+5. The configuration file must be mounted (via ConfigMap or Secret) to the path `/root/.go-continuous-fuzz/` with the filename `go-continuous-fuzz.conf`.
 
 Note: In the Docker setup, each fuzz target runs in a separate Docker container, with a fixed resource limit of **2 GB of memory** and **1 CPU** per container. In the Kubernetes setup, each fuzz target runs in a separate Pod with the same fixed resource constraints. This isolation ensures that `go-continuous-fuzz` can handle out-of-memory (OOM) errors in one fuzz target without affecting the execution of others.
 

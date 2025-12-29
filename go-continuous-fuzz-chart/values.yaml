@@ -1,9 +1,48 @@
 serviceAccount:
-  create: true
   automount: true
+  # The name of this ServiceAccount is fixed and must not be changed.
   name: "go-continuous-fuzz-sa"
 
 rbac:
-  create: true
   roleName: "go-continuous-fuzz-role"
   roleBindingName: "go-continuous-fuzz-rb"
+
+aws:
+  secretName: "go-continuous-fuzz-aws-creds"
+  accessKeyId: ""
+  secretAccessKey: ""
+  region: ""
+  sessionToken: ""
+
+github:
+  authToken: ""
+
+configMap:
+  name: "go-continuous-fuzz-config"
+
+project:
+  workspacePath: "/var/lib/go-continuous-fuzz"
+  logdir: "/var/lib/go-continuous-fuzz/logs"
+  srcRepo: ""
+  s3BucketName: ""
+
+fuzz:
+  inCluster: true
+  crashRepo: ""
+  pkgsPath:
+  syncFrequency: ""
+  corpusMinimizeInterval: ""
+  iterations:
+  numWorkers:
+
+pod:
+  name: "go-continuous-fuzz-pod"
+  # Change according to the Docker image of the go-continuous-fuzz project
+  container:
+    name: "go-continuous-fuzz-container"
+    image: "go-continuous-fuzz"
+    imagePullPolicy: "Never"
+
+pvc:
+  name: "go-continuous-fuzz-pvc"
+  storage: "8Gi"

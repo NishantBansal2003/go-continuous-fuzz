@@ -15,10 +15,6 @@ import (
 )
 
 const (
-	// InClusterWorkspacePath is the temporary in‑cluster path where the
-	// fuzzing workspace is located.
-	InClusterWorkspacePath = "/var/lib/go-continuous-fuzz"
-
 	// TmpProjectDir is the temporary directory where the project is
 	// located.
 	TmpProjectDir = "project"
@@ -83,7 +79,7 @@ var (
 //
 //nolint:lll
 type Project struct {
-	WorkSpacePath string `long:"workspace-path" description:"Absolute path to the directory where go-continuous-fuzz generated files are stored in docker mode"`
+	WorkSpacePath string `long:"workspace-path" description:"Absolute path to the directory where go-continuous-fuzz generated files are stored"`
 
 	SrcRepo string `long:"src-repo" description:"Git repo URL of the project to fuzz" required:"true"`
 
@@ -213,29 +209,25 @@ func loadConfig() (*Config, error) {
 	}
 	cfg.Project.CorpusKey = fmt.Sprintf("%s_corpus.zip", repo)
 
+	// In in-cluster mode, a workspace PVC will be mounted at WorkSpacePath.
+	// Therefore, the workspace path must be explicitly provided.
+	if cfg.Fuzz.InCluster && cfg.Project.WorkSpacePath == "" {
+		return nil, fmt.Errorf("--project.workspace-path is required " +
+			"when running in in-cluster mode")
+	}
+
 	// Set the absolute path to the workspace directory.
 	//
-	// Use a fixed workspace path when fuzzing is running in in-cluster
-	// mode.
-	//
 	// If the user specifies --workspace-path, use that path directly.
-	// Otherwise, create a temporary directory automatically in docker mode.
+	// Otherwise, create a temporary directory automatically.
 	//
 	// Having a fixed workspace path is especially useful for debugging,
 	// since the generated files will persist if go-continuous-fuzz crashes.
-	var tmpDirPath string
-	if cfg.Fuzz.InCluster {
-		tmpDirPath = InClusterWorkspacePath
-	} else {
-		if cfg.Project.WorkSpacePath == "" {
-			tmpDirPath, err = os.MkdirTemp("",
-				"go-continuous-fuzz-")
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			tmpDirPath = CleanAndExpandPath(
-				cfg.Project.WorkSpacePath)
+	tmpDirPath := CleanAndExpandPath(cfg.Project.WorkSpacePath)
+	if tmpDirPath == "" {
+		tmpDirPath, err = os.MkdirTemp("", "go-continuous-fuzz-")
+		if err != nil {
+			return nil, err
 		}
 	}
 

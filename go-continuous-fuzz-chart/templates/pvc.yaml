@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: go-continuous-fuzz-pvc
-  namespace: go-continuous-fuzz-ns
+  name: {{ .Values.pvc.name }}
+  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
-      storage: ${PVC_STORAGE_SIZE}
+      storage: {{ .Values.pvc.storage }}

@@ -13,6 +13,7 @@ fi
 
 # Temporary Variables
 readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/NishantBansal2003/go-fuzzing-example.git"
+readonly PROJECT_SRC_REPO="https://github.com/NishantBansal2003/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly CORPUS_MINIMIZE_INTERVAL="4m"
 readonly ITERATIONS=3
@@ -198,10 +199,15 @@ if [[ ${MODE} == "k8s" ]]; then
   echo "Running in Kubernetes mode..."
 
   # Configuration variables
-  readonly AWS_SECRET_NAME="aws-creds"
   readonly HELM_RELEASE_NAME="go-continuous-fuzz"
   readonly K8S_NAMESPACE="go-continuous-fuzz-ns"
   readonly POD_NAME="go-continuous-fuzz-pod"
+
+  # Get AWS credentials from AWS configuration
+  readonly AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
+  readonly AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
+  readonly AWS_REGION=$(aws configure get region)
+  readonly AWS_SESSION_TOKEN=$(aws configure get aws_session_token)
 
   # Enable Docker environment inside Minikube
   eval $(minikube docker-env)
@@ -215,49 +221,28 @@ if [[ ${MODE} == "k8s" ]]; then
 
   # Deploy Helm chart
   echo "Installing/Upgrading Helm release..."
-  if ! helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" --namespace "${K8S_NAMESPACE}" --create-namespace; then
+  if ! helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" \
+    --namespace "${K8S_NAMESPACE}" \
+    --create-namespace \
+    --set project.srcRepo="${PROJECT_SRC_REPO}" \
+    --set project.s3BucketName="${BUCKET_NAME}" \
+    --set fuzz.crashRepo="${PROJECT_SRC_REPO}" \
+    --set fuzz.pkgsPath="{parser,stringutils,tree}" \
+    --set fuzz.syncFrequency="${SYNC_FREQUENCY}" \
+    --set fuzz.corpusMinimizeInterval="${CORPUS_MINIMIZE_INTERVAL}" \
+    --set fuzz.iterations=${ITERATIONS} \
+    --set fuzz.numWorkers=3 \
+    --set aws.accessKeyId="${AWS_ACCESS_KEY_ID}" \
+    --set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}" \
+    --set aws.region="${AWS_REGION}" \
+    --set aws.sessionToken="${AWS_SESSION_TOKEN:-}" \
+    --set github.authToken="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}"; then
     echo "❌ Failed to deploy Helm chart"
     exit 1
   fi
 
   # Set the default namespace for kubectl commands
   kubectl config set-context --current --namespace="${K8S_NAMESPACE}"
-
-  # Recreate AWS credentials secret
-  kubectl delete secret ${AWS_SECRET_NAME} --ignore-not-found
-
-  secret_args=(
-    --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
-    --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-    --from-literal=AWS_REGION="${AWS_REGION}"
-  )
-  if [[ -n "${AWS_SESSION_TOKEN:-}" ]]; then
-    secret_args+=(--from-literal=AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}")
-  fi
-
-  if ! kubectl create secret generic "${AWS_SECRET_NAME}" "${secret_args[@]}"; then
-    echo "❌ Failed to create AWS credentials secret"
-    exit 1
-  fi
-
-  # Apply additional K8s resources
-  echo "Applying manifests..."
-  # Substitute the GitHub token into the ConfigMap manifest and apply it to the cluster
-  if ! sed "s|\${GO_FUZZING_EXAMPLE_AUTH_TOKEN}|${GO_FUZZING_EXAMPLE_AUTH_TOKEN}|g" ./manifests/configmap.yaml | kubectl apply -f -; then
-    echo "❌ Failed to apply configmap.yaml"
-    exit 1
-  fi
-
-  # Substitute PVC storage size and apply
-  if ! sed "s|\${PVC_STORAGE_SIZE}|8Gi|g" ./manifests/pvc.yaml | kubectl apply -f -; then
-    echo "❌ Failed to apply pvc.yaml"
-    exit 1
-  fi
-
-  if ! kubectl apply -f "./manifests/pod.yaml"; then
-    echo "❌ Failed to apply pod.yaml"
-    exit 1
-  fi
 
   # Wait for the pod to be ready
   echo "Waiting for pod '${POD_NAME}' to be ready..."
@@ -267,14 +252,11 @@ if [[ ${MODE} == "k8s" ]]; then
     exit 1
   fi
 
-  # Stream logs with timeout
-  echo "Streaming logs from pod..."
-  kubectl logs -f "${POD_NAME}"
-
   # In k8s, the logs are stored at /root/.go-continuous-fuzz/logs/gcf.log
   # inside the cluster, which is not accessible from the host filesystem.
   # Therefore, we stream the pod logs to the GCF_LOG file on the host.
-  kubectl logs "${POD_NAME}" >>"${GCF_LOG}"
+  echo "Streaming logs from pod..."
+  kubectl logs -f "${POD_NAME}" | tee -a "${GCF_LOG}"
 
   # Clean up pod
   kubectl delete pod "${POD_NAME}" --ignore-not-found
@@ -344,7 +326,7 @@ REQUIRED_PATTERNS=(
 
 if [[ ${MODE} == "k8s" ]]; then
   REQUIRED_PATTERNS+=(
-    'Running fuzzing jobs inside Kubernetes'
+    'msg="Running fuzzing jobs" mode=Kubernetes'
     'msg="Fuzzing completed successfully" mode=Kubernetes package=stringutils target=FuzzUnSafeReverseString'
     'msg="Fuzzing completed successfully" mode=Kubernetes package=stringutils target=FuzzReverseString'
     'msg="Fuzzing completed successfully" mode=Kubernetes package=parser target=FuzzParseComplex'
@@ -353,7 +335,7 @@ if [[ ${MODE} == "k8s" ]]; then
   )
 else
   REQUIRED_PATTERNS+=(
-    'Running fuzzing jobs in Docker container'
+    'msg="Running fuzzing jobs" mode=Docker'
     'msg="Fuzzing completed successfully" mode=Docker package=stringutils target=FuzzUnSafeReverseString'
     'msg="Fuzzing completed successfully" mode=Docker package=stringutils target=FuzzReverseString'
     'msg="Fuzzing completed successfully" mode=Docker package=parser target=FuzzParseComplex'
@@ -418,11 +400,11 @@ FORBIDDEN_PATTERNS=(
 
 if [[ ${MODE} == "k8s" ]]; then
   FORBIDDEN_PATTERNS+=(
-    'Running fuzzing jobs in Docker container'
+    'msg="Running fuzzing jobs" mode=Docker'
   )
 else
   FORBIDDEN_PATTERNS+=(
-    'Running fuzzing jobs inside Kubernetes'
+    'msg="Running fuzzing jobs" mode=Kubernetes'
   )
 fi
 
