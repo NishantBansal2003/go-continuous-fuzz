@@ -12,6 +12,8 @@ spec:
       envFrom:
         - secretRef:
             name: {{ .Values.aws.secretName }}
+        - secretRef:
+            name: {{ .Values.github.secretName }}
       volumeMounts:
         - name: config
           mountPath: /root/.go-continuous-fuzz/go-continuous-fuzz.conf

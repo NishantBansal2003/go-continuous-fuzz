@@ -12,7 +12,6 @@ if [[ "$MODE" != "docker" && "$MODE" != "k8s" ]]; then
 fi
 
 # Temporary Variables
-readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
 readonly PROJECT_SRC_REPO="https://github.com/go-continuous-fuzz/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly CORPUS_MINIMIZE_INTERVAL="4m"
@@ -114,7 +113,7 @@ check_issue_contains_string() {
 
   # Extract owner, and repo from URL
   local owner_repo owner repo
-  owner_repo=$(echo "${PROJECT_SRC_PATH}" | sed -n 's|.*github.com/\(.*\)\.git|\1|p')
+  owner_repo=$(echo "${PROJECT_SRC_REPO}" | sed -n 's|.*github.com/\(.*\)\.git|\1|p')
   owner=$(echo "${owner_repo}" | cut -d'/' -f1)
   repo=$(echo "${owner_repo}" | cut -d'/' -f2)
 
@@ -152,7 +151,7 @@ trap cleanup EXIT
 
 # Clone the target repository
 echo "Cloning project repository..."
-git clone "${PROJECT_SRC_PATH}" "${PROJECT_DIR}"
+git clone "${PROJECT_SRC_REPO}" "${PROJECT_DIR}"
 
 # Download and extract only the seed_corpus directory from the project tarball
 echo "Downloading seed corpus..."
@@ -271,16 +270,20 @@ else
   # Command-line flags for fuzzing process configuration
   ARGS="\
 --logdir=${FUZZ_RESULTS_PATH} \
---project.src-repo=${PROJECT_SRC_PATH} \
+--project.src-repo=${PROJECT_SRC_REPO} \
 --project.s3-bucket-name=${BUCKET_NAME} \
 --fuzz.sync-frequency=${SYNC_FREQUENCY} \
 --fuzz.corpus-minimize-interval=${CORPUS_MINIMIZE_INTERVAL} \
 --fuzz.iterations=${ITERATIONS} \
---fuzz.crash-repo=${PROJECT_SRC_PATH} \
+--fuzz.crash-repo=${PROJECT_SRC_REPO} \
 --fuzz.num-workers=3 \
 --fuzz.pkgs-path=parser \
 --fuzz.pkgs-path=stringutils \
 --fuzz.pkgs-path=tree"
+
+  # Provide the GitHub token via the environment so gcf can clone the
+  # source repo and open crash issues.
+  export GITHUB_AUTH_TOKEN="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}"
 
   # Run make run, capturing stdout+stderr into GCF_LOG.
   make run ARGS="${ARGS}"

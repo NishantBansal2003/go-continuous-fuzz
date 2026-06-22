@@ -10,11 +10,11 @@ data:
 
     [Project]
     project.workspace-path = "{{ .Values.project.workspacePath }}"
-    project.src-repo = "https://oauth2:{{ .Values.github.authToken}}@{{ trimPrefix "https://" .Values.project.srcRepo }}"
+    project.src-repo = "{{ .Values.project.srcRepo }}"
     project.s3-bucket-name = "{{ .Values.project.s3BucketName }}"
 
     [Fuzz Options]
-    fuzz.crash-repo = "https://oauth2:{{ .Values.github.authToken}}@{{ trimPrefix "https://" .Values.fuzz.crashRepo }}"
+    fuzz.crash-repo = "{{ .Values.fuzz.crashRepo }}"
 {{- range .Values.fuzz.pkgsPath }}
     fuzz.pkgs-path = "{{ . }}"
 {{- end }}

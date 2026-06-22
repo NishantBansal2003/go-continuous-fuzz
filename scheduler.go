@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/go-git/go-git/v5"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -56,10 +58,19 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 			SanitizeURL(cfg.Project.SrcRepo), "path",
 			cfg.Project.SrcDir)
 
+		// Authenticate the clone with the GitHub token when provided so
+		// that private source repositories can be cloned. Public repos
+		// clone fine without it.
+		cloneOpts := &git.CloneOptions{URL: cfg.Project.SrcRepo}
+		if token := os.Getenv(GithubTokenEnvVar); token != "" {
+			cloneOpts.Auth = &githttp.BasicAuth{
+				Username: "oauth2",
+				Password: token,
+			}
+		}
+
 		_, err := git.PlainCloneContext(
-			ctx, cfg.Project.SrcDir, false, &git.CloneOptions{
-				URL: cfg.Project.SrcRepo,
-			},
+			ctx, cfg.Project.SrcDir, false, cloneOpts,
 		)
 		if err != nil {
 			logger.Error("Failed to clone project repository; " +

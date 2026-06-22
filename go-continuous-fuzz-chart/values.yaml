@@ -14,6 +14,7 @@ aws:
   sessionToken: ""
 
 github:
+  secretName: "go-continuous-fuzz-github-creds"
   authToken: ""
 
 configMap:

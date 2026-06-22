@@ -48,6 +48,9 @@ func (c *Cluster) Start() (string, error) {
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "go-continuous-fuzz-sa",
+					// Don't mount the SA token as the fuzz Job
+					// never calls the Kubernetes API.
+					AutomountServiceAccountToken: ptr.To(false),
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsUser:  ptr.To(int64(os.Getuid())),
 						RunAsGroup: ptr.To(int64(os.Getgid())),

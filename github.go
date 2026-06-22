@@ -28,8 +28,9 @@ type GitHubRepo struct {
 	repo         string
 }
 
-// NewGitHubRepo constructs a GitHubRepo instance by parsing the repository URL.
-// It extracts the owner, repository name, and token for authentication.
+// NewGitHubRepo constructs a GitHubRepo instance by parsing the repository URL
+// for the owner and repository name, and reading the access token used for
+// authentication from the environment.
 func NewGitHubRepo(ctx context.Context, logger *slog.Logger, cli *client.Client,
 	k8sClientSet *kubernetes.Clientset, cfg *Config) (*GitHubRepo, error) {
 
@@ -43,10 +44,10 @@ func NewGitHubRepo(ctx context.Context, logger *slog.Logger, cli *client.Client,
 		return nil, err
 	}
 
-	token := extractToken(u)
+	token := os.Getenv(GithubTokenEnvVar)
 	if token == "" {
-		return nil, fmt.Errorf("authentication token not provided in "+
-			"repository URL: %s", cfg.Fuzz.CrashRepo)
+		return nil, fmt.Errorf("%s environment variable is required "+
+			"to open issues for crashes", GithubTokenEnvVar)
 	}
 
 	return &GitHubRepo{
@@ -59,16 +60,6 @@ func NewGitHubRepo(ctx context.Context, logger *slog.Logger, cli *client.Client,
 		owner:        owner,
 		repo:         repo,
 	}, nil
-}
-
-// extractToken retrieves the access token from the repository URL, if provided.
-func extractToken(u *url.URL) string {
-	if u.User != nil {
-		if pwd, ok := u.User.Password(); ok {
-			return pwd
-		}
-	}
-	return ""
 }
 
 // extractOwnerRepo parses the owner and repository name from the URL path.

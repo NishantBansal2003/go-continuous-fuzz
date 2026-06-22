@@ -20,18 +20,27 @@ You can configure **go-continuous-fuzz** using either conifg file or command-lin
 | `fuzz.namespace`                | Kubernetes namespace to use (used with --in-cluster).        | No       | default                                               |
 
 **Repository URL formats:**
-For `project.src-repo`:
 
-- Private: `https://oauth2:PAT@github.com/OWNER/REPO.git`
-- Public: `https://github.com/OWNER/REPO.git`
+For both `project.src-repo` and `fuzz.crash-repo`:
 
-For `fuzz.crash-repo`:
+- `https://github.com/OWNER/REPO.git`
 
-- (Requires authentication): `https://oauth2:PAT@github.com/OWNER/REPO.git`
+**GitHub authentication:**
 
-Note: The authentication token is used to open issues on GitHub whenever a crash is detected.
-In short, issues will be created from the GitHub account associated with the provided authentication token.
+The authentication token is read from the `GITHUB_AUTH_TOKEN` environment variable, and must not be embedded in the URL. It is required to:
+
+- clone a private `project.src-repo`, and
+- open issues on `fuzz.crash-repo` whenever a crash is detected.
+
+Cloning a public source repository does not require it.
+
+The same token is used for both repositories, so when `project.src-repo` and `fuzz.crash-repo` are different, it must have access to both. A classic PAT (or a fine-grained PAT whose selected repositories cover both) is sufficient.
+
+Note: Issues will be created from the GitHub account associated with the provided authentication token.
 Similar behavior is followed when closing issues.
+
+In Docker mode, export `GITHUB_AUTH_TOKEN` before running.
+In Kubernetes, set `github.authToken` in the [Helm chart](../go-continuous-fuzz-chart/values.yaml).
 
 ## AWS S3 Storage Guidelines
 

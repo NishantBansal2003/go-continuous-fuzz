@@ -33,7 +33,6 @@ jobs:
           aws-region: us-east-1
 
       - name: Set up Go
-        id: setup
         uses: actions/setup-go@v4
         with:
           go-version: "1.24.6"
@@ -64,7 +63,6 @@ jobs:
           aws-region: us-east-1
 
       - name: Start minikube
-        id: minikube
         uses: medyagh/setup-minikube@latest
         with:
           cpus: 4
@@ -72,11 +70,8 @@ jobs:
 
       - name: Install Helm
         uses: azure/setup-helm@v4
-        env:
-          GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GO_FUZZING_EXAMPLE_AUTH_TOKEN }}
 
       - name: Set up Go
-        id: setup
         uses: actions/setup-go@v4
         with:
           go-version: "1.24.6"

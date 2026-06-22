@@ -51,6 +51,10 @@ const (
 	// LogFilename is the filename where go-continuous-fuzz writes its log
 	// output, in addition to writing it to stdout.
 	LogFilename = "gcf.log"
+
+	// GithubTokenEnvVar is the name of the environment variable that holds
+	// the GitHub access token.
+	GithubTokenEnvVar = "GITHUB_AUTH_TOKEN"
 )
 
 var (
