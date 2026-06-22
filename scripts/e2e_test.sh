@@ -12,7 +12,7 @@ if [[ "$MODE" != "docker" && "$MODE" != "k8s" ]]; then
 fi
 
 # Temporary Variables
-readonly PROJECT_SRC_REPO="https://github.com/go-continuous-fuzz/go-fuzzing-example.git"
+readonly PROJECT_SRC_REPO="https://github.com/NishantBansal2003/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly CORPUS_MINIMIZE_INTERVAL="4m"
 readonly ITERATIONS=3
@@ -156,8 +156,56 @@ git clone "${PROJECT_SRC_REPO}" "${PROJECT_DIR}"
 # Download and extract only the seed_corpus directory from the project tarball
 echo "Downloading seed corpus..."
 mkdir -p ${CORPUS_DIR_PATH}
-curl -L https://codeload.github.com/go-continuous-fuzz/go-fuzzing-example/tar.gz/main |
+curl -L https://codeload.github.com/NishantBansal2003/go-fuzzing-example/tar.gz/main |
   tar -xz --strip-components=2 -C ${CORPUS_DIR_PATH} go-fuzzing-example-main/seed_corpus
+
+# ====== LOCAL S3 EMULATOR (CI ONLY) ======
+#
+# In CI we never touch real AWS. When USE_LOCAL_S3=true (set by the CI
+# workflow) the AWS CLI and the go-continuous-fuzz binary are pointed at a
+# LocalStack S3 emulator purely through the standard AWS_ENDPOINT_URL_S3
+# environment variable, so the exact same code paths run unchanged against
+# real AWS in production.
+#
+# For docker mode LocalStack runs as a workflow service container and the
+# endpoint is supplied through the environment, so nothing is needed here.
+# For k8s mode the binary runs inside the cluster, so we deploy LocalStack
+# there and expose it both to the host (NodePort, for the verification steps
+# below) and to the pod (ClusterIP, wired in via Helm further down).
+EMULATOR_HELM_ARGS=()
+if [[ "${USE_LOCAL_S3:-false}" == "true" && "${MODE}" == "k8s" ]]; then
+  echo "Deploying in-cluster LocalStack S3 emulator..."
+  LOCALSTACK_NS="localstack"
+
+  kubectl create namespace "${LOCALSTACK_NS}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -n "${LOCALSTACK_NS}" -f scripts/localstack.yaml
+
+  echo "Waiting for LocalStack to become ready..."
+  kubectl rollout status deployment/localstack \
+    -n "${LOCALSTACK_NS}" --timeout=180s
+
+  ls_cluster_ip=$(kubectl get svc localstack -n "${LOCALSTACK_NS}" \
+    -o jsonpath='{.spec.clusterIP}')
+  ls_node_port=$(kubectl get svc localstack -n "${LOCALSTACK_NS}" \
+    -o jsonpath='{.spec.ports[0].nodePort}')
+
+  # Host-side AWS CLI reaches LocalStack via the NodePort. The endpoint is an
+  # IP, so use path-style addressing for the CLI.
+  export AWS_ENDPOINT_URL_S3="http://$(minikube ip):${ls_node_port}"
+  aws configure set default.s3.addressing_style path
+
+  # The pod reaches LocalStack via its magic hostname (which LocalStack
+  # recognises for virtual-hosted bucket addressing). hostAliases override
+  # DNS so both the endpoint host and the bucket's virtual-host subdomain
+  # resolve to the LocalStack ClusterIP from inside the pod.
+  EMULATOR_HELM_ARGS=(
+    --set aws.endpointUrl="http://s3.localhost.localstack.cloud:4566"
+    --set "pod.hostAliases[0].ip=${ls_cluster_ip}"
+    --set "pod.hostAliases[0].hostnames[0]=s3.localhost.localstack.cloud"
+    --set "pod.hostAliases[0].hostnames[1]=${BUCKET_NAME}.s3.localhost.localstack.cloud"
+  )
+fi
 
 # Create the S3 bucket (if not already) and upload the zipped corpus
 echo "Creating S3 bucket and uploading corpus..."
@@ -239,7 +287,8 @@ if [[ ${MODE} == "k8s" ]]; then
     --set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}" \
     --set aws.region="${AWS_REGION}" \
     --set aws.sessionToken="${AWS_SESSION_TOKEN:-}" \
-    --set github.authToken="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}"; then
+    --set github.authToken="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
+    ${EMULATOR_HELM_ARGS[@]+"${EMULATOR_HELM_ARGS[@]}"}; then
     echo "❌ Failed to deploy Helm chart"
     exit 1
   fi
@@ -494,7 +543,7 @@ done
 
 # Verify the expected number of open issues in the crash repo
 issue_count=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
-  "https://api.github.com/search/issues?q=repo:go-continuous-fuzz/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
+  "https://api.github.com/search/issues?q=repo:NishantBansal2003/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
 if [[ "${issue_count}" -ne 3 ]]; then
   echo "❌ ERROR: Expected 3 open issues, but found ${issue_count}"
   exit 1

@@ -4,6 +4,10 @@ metadata:
   name: {{ .Values.pod.name }}
   namespace: {{ .Release.Namespace }}
 spec:
+  {{- with .Values.pod.hostAliases }}
+  hostAliases:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   serviceAccountName: {{ .Values.serviceAccount.name }}
   containers:
     - name: {{ .Values.pod.container.name }}
