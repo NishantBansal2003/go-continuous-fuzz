@@ -73,6 +73,8 @@ make docker-run VOLUME_MOUNTS=<required>
 make test
 ```
 
+**Note:** Ensure that the GitHub auth token is set as an environment variable in `GO_FUZZING_EXAMPLE_AUTH_TOKEN`. Also, If you are using temporary AWS credentials (e.g., from an IAM role or `aws sts assume-role`), make sure to set `AWS_SESSION_TOKEN`.
+
 ## Additional Information
 
 You can install the compiled binary to your Go bin directory (`$GOBIN`, or `$HOME/go/bin` if `GOBIN` is not set) using the following command:

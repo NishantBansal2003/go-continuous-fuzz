@@ -1,0 +1,305 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	k8swatch "k8s.io/client-go/tools/watch"
+	"k8s.io/utils/ptr"
+)
+
+// Cluster encapsulates the configuration and state needed to manage a
+// Kubernetes Job for running fuzzing tasks, including context, logger,
+// Kubernetes client, configuration, directories path, and command.
+type Cluster struct {
+	ctx            context.Context
+	logger         *slog.Logger
+	jobName        string
+	clientset      *kubernetes.Clientset
+	cfg            *Config
+	fuzzBinaryPath string
+	cmd            []string
+}
+
+// Start creates a Kubernetes Job with the specified configuration.
+// It returns the job name if successful, or an error if job creation fails.
+//
+//nolint:lll
+func (c *Cluster) Start() (string, error) {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: c.jobName,
+		},
+		Spec: batchv1.JobSpec{
+			// No retries so that we do not restart if there is a fuzz crash.
+			BackoffLimit: ptr.To(int32(0)),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					ServiceAccountName: "go-continuous-fuzz-sa",
+					// Don't mount the SA token as the fuzz Job
+					// never calls the Kubernetes API.
+					AutomountServiceAccountToken: ptr.To(false),
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  ptr.To(int64(os.Getuid())),
+						RunAsGroup: ptr.To(int64(os.Getgid())),
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:       "fuzz-container",
+							Image:      ContainerImage,
+							Command:    c.cmd,
+							WorkingDir: c.fuzzBinaryPath,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "GOCACHE",
+									Value: "/tmp",
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "go-continuous-fuzz-src",
+									MountPath: filepath.Dir(c.cfg.Project.SrcDir),
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("2Gi"),
+									corev1.ResourceCPU:    resource.MustParse("1"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("2Gi"),
+									corev1.ResourceCPU:    resource.MustParse("1"),
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "go-continuous-fuzz-src",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "go-continuous-fuzz-pvc",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Create job in Kubernetes
+	_, err := c.clientset.BatchV1().Jobs(c.cfg.Fuzz.NameSpace).Create(c.ctx, job, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create job: %w", err)
+	}
+
+	// Returning the job name to maintain consistency with the Container
+	// implementation for abstraction.
+	return c.jobName, nil
+}
+
+// WaitAndGetLogs watches the job's pod and listens to the pod's log stream,
+// processes fuzz output, and reports either a fuzz crash or the job's status.
+//
+// It reads logs until EOF or context cancellation, then:
+// 1. If a fuzz failure is detected, crash data is sent on fuzzCrashChan.
+// 2. Otherwise, retrieves the job's exit error and sends it on errChan.
+//
+// No values are sent if the context is canceled or times out.
+//
+//	This MUST be run as a goroutine.
+func (c *Cluster) WaitAndGetLogs(jobName, pkg, target string,
+	fuzzCrashChan chan fuzzCrash, errChan chan error) {
+	// Wait until a pod associated with the job is created and is either
+	// Running, Succeeded, or Failed.
+	pod, err := c.waitForPod()
+	if err != nil {
+		if c.ctx.Err() == nil {
+			errChan <- fmt.Errorf("error waiting for pod: %w", err)
+		}
+		return
+	}
+
+	// Acquire the log stream for the running pod.
+	logsReq := c.clientset.CoreV1().Pods(c.cfg.Fuzz.NameSpace).GetLogs(
+		pod.Name, &corev1.PodLogOptions{
+			Follow: true,
+		})
+	logsStream, err := logsReq.Stream(c.ctx)
+	if err != nil {
+		if c.ctx.Err() == nil {
+			errChan <- fmt.Errorf("failed to get logs stream: %w",
+				err)
+		}
+		return
+	}
+	defer func() {
+		if err := logsStream.Close(); err != nil {
+			c.logger.Error("error closing logs stream", "jobName",
+				jobName, "error", err)
+		}
+	}()
+
+	// Define the path where failing corpus inputs might be saved by the
+	// fuzzing process.
+	maybeFailingCorpusPath := filepath.Join(c.fuzzBinaryPath, "testdata",
+		"fuzz")
+
+	// Process the standard output, which may include both stdout and stderr
+	// content.
+	processor := NewFuzzOutputProcessor(c.logger.With("target", target).
+		With("package", pkg), maybeFailingCorpusPath)
+	crashData, err := processor.processFuzzStream(logsStream)
+	if err != nil {
+		errChan <- fmt.Errorf("failed to process fuzz stream for "+
+			"job %s: %w", jobName, err)
+		return
+	}
+
+	// Fuzz target crashed, so report and exit this goroutine.
+	if crashData != nil {
+		fuzzCrashChan <- *crashData
+		return
+	}
+
+	// Retrieve the job status and send error (if any) on errChan.
+	errChan <- c.Wait(jobName)
+}
+
+// waitForPod waits for a pod associated with the job to be created and reach a
+// terminal or running state. It first lists existing pods and then watches for
+// any changes. The function returns when a pod transitions to one of the
+// following phases: Running, Succeeded, or Failed.
+func (c *Cluster) waitForPod() (*corev1.Pod, error) {
+	labelSel := fmt.Sprintf("job-name=%s", c.jobName)
+
+	lw := &cache.ListWatch{
+		ListFunc: func(opts metav1.ListOptions) (runtime.Object,
+			error) {
+
+			opts.LabelSelector = labelSel
+			return c.clientset.CoreV1().
+				Pods(c.cfg.Fuzz.NameSpace).
+				List(c.ctx, opts)
+		},
+		WatchFunc: func(opts metav1.ListOptions) (watch.Interface,
+			error) {
+
+			opts.LabelSelector = labelSel
+			return c.clientset.CoreV1().
+				Pods(c.cfg.Fuzz.NameSpace).
+				Watch(c.ctx, opts)
+		},
+	}
+
+	// Wait for Pod to reach a terminal or running state.
+	evt, err := k8swatch.UntilWithSync(c.ctx, lw, &corev1.Pod{}, nil,
+		func(event watch.Event) (bool, error) {
+			if event.Type == watch.Error {
+				return false, fmt.Errorf("watch error: %v",
+					event.Object)
+			}
+			pod, ok := event.Object.(*corev1.Pod)
+			if !ok {
+				return false, nil
+			}
+
+			phase := pod.Status.Phase
+			if phase == corev1.PodRunning ||
+				phase == corev1.PodSucceeded ||
+				phase == corev1.PodFailed {
+
+				return true, nil
+			}
+			return false, nil
+		})
+	if err != nil {
+		return nil, fmt.Errorf("timed out or failed waiting for "+
+			"pod: %w", err)
+	}
+
+	pod, ok := evt.Object.(*corev1.Pod)
+	if !ok {
+		return nil, fmt.Errorf("unexpected object type %T", evt.Object)
+	}
+	return pod, nil
+}
+
+// Wait waits for the Kubernetes Job to complete by either succeeding or
+// failing. It returns nil if the job succeeds, or an error if the job fails or
+// a watch error occurs.
+func (c *Cluster) Wait(ID string) error {
+	fieldSel := fmt.Sprintf("metadata.name=%s", ID)
+	lw := &cache.ListWatch{
+		ListFunc: func(opts metav1.ListOptions) (runtime.Object,
+			error) {
+
+			opts.FieldSelector = fieldSel
+			return c.clientset.BatchV1().Jobs(c.cfg.Fuzz.NameSpace).
+				List(c.ctx, opts)
+		},
+		WatchFunc: func(opts metav1.ListOptions) (watch.Interface,
+			error) {
+
+			opts.FieldSelector = fieldSel
+			return c.clientset.BatchV1().Jobs(c.cfg.Fuzz.NameSpace).
+				Watch(c.ctx, opts)
+		},
+	}
+
+	// Wait for Job to succeed or fail.
+	_, err := k8swatch.UntilWithSync(c.ctx, lw, &batchv1.Job{}, nil,
+		func(event watch.Event) (bool, error) {
+			if event.Type == watch.Error {
+				return false, fmt.Errorf("watch error: %v",
+					event.Object)
+			}
+
+			job, ok := event.Object.(*batchv1.Job)
+			if !ok {
+				return false, nil
+			}
+
+			switch {
+			case job.Status.Succeeded > 0:
+				return true, nil
+			case job.Status.Failed > 0:
+				return false, fmt.Errorf("fuzz job %q failed",
+					ID)
+			default:
+				return false, nil
+			}
+		})
+
+	if err != nil && c.ctx.Err() == nil {
+		return fmt.Errorf("job %q watch failed: %w", ID, err)
+	}
+	return nil
+}
+
+// Stop deletes a specified Kubernetes job and its associated pods.
+func (c *Cluster) Stop(jobName string) error {
+	propagationPolicy := metav1.DeletePropagationBackground
+	err := c.clientset.BatchV1().Jobs(c.cfg.Fuzz.NameSpace).Delete(
+		context.Background(), jobName, metav1.DeleteOptions{
+			PropagationPolicy: &propagationPolicy,
+		})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,7 +13,10 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/go-git/go-git/v5"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // runFuzzingCycles runs an infinite loop of fuzzing cycles. Each cycle consists
@@ -54,10 +58,19 @@ func runFuzzingCycles(ctx context.Context, logger *slog.Logger,
 			SanitizeURL(cfg.Project.SrcRepo), "path",
 			cfg.Project.SrcDir)
 
+		// Authenticate the clone with the GitHub token when provided so
+		// that private source repositories can be cloned. Public repos
+		// clone fine without it.
+		cloneOpts := &git.CloneOptions{URL: cfg.Project.SrcRepo}
+		if token := os.Getenv(GithubTokenEnvVar); token != "" {
+			cloneOpts.Auth = &githttp.BasicAuth{
+				Username: "oauth2",
+				Password: token,
+			}
+		}
+
 		_, err := git.PlainCloneContext(
-			ctx, cfg.Project.SrcDir, false, &git.CloneOptions{
-				URL: cfg.Project.SrcRepo,
-			},
+			ctx, cfg.Project.SrcDir, false, cloneOpts,
 		)
 		if err != nil {
 			logger.Error("Failed to clone project repository; " +
@@ -258,44 +271,68 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 	logger.Info("Per-target fuzz timeout calculated", "duration",
 		perTargetTimeout)
 
-	// Create a Docker client for running containers.
-	cli, err := client.NewClientWithOpts(client.FromEnv,
-		client.WithAPIVersionNegotiation())
-	if err != nil {
-		errChan <- fmt.Errorf("failed to start docker client: %w", err)
-		return
-	}
-	defer func() {
-		if err := cli.Close(); err != nil {
-			logger.Error("Failed to stop docker client", "error",
-				err)
-		}
-	}()
-
-	// Pull the Docker image specified by ContainerImage.
-	reader, err := cli.ImagePull(ctx, ContainerImage,
-		image.PullOptions{})
-	if err != nil {
-		errChan <- fmt.Errorf("failed to pull docker image: %w", err)
-		return
-	}
-	defer func() {
-		err := reader.Close()
+	var (
+		cli       *client.Client
+		clientset *kubernetes.Clientset
+		err       error
+	)
+	if cfg.Fuzz.InCluster {
+		// Create a Kubernetes client for spawning fuzzing jobs.
+		kcfg, err := rest.InClusterConfig()
 		if err != nil {
-			logger.Error("Failed to close image logs reader",
-				"error", err)
+			errChan <- fmt.Errorf("failed to get in-cluster "+
+				"config: %w", err)
+			return
 		}
-	}()
 
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		logger.Info("Image Pull output", "message", line)
-	}
-	if err := scanner.Err(); err != nil {
-		errChan <- fmt.Errorf("error reading image-pull stream: %w",
-			err)
-		return
+		clientset, err = kubernetes.NewForConfig(kcfg)
+		if err != nil {
+			errChan <- fmt.Errorf("failed to build kubernetes "+
+				"client: %w", err)
+			return
+		}
+	} else {
+		// Create a Docker client for running containers.
+		cli, err = client.NewClientWithOpts(client.FromEnv,
+			client.WithAPIVersionNegotiation())
+		if err != nil {
+			errChan <- fmt.Errorf("failed to start docker client: "+
+				"%w", err)
+			return
+		}
+		defer func() {
+			if err := cli.Close(); err != nil {
+				logger.Error("Failed to stop docker client",
+					"error", err)
+			}
+		}()
+
+		// Pull the Docker image specified by ContainerImage.
+		reader, err := cli.ImagePull(ctx, ContainerImage,
+			image.PullOptions{})
+		if err != nil {
+			errChan <- fmt.Errorf("failed to pull docker image: %w",
+				err)
+			return
+		}
+		defer func() {
+			err := reader.Close()
+			if err != nil {
+				logger.Error("Failed to close image logs "+
+					"reader", "error", err)
+			}
+		}()
+
+		scanner := bufio.NewScanner(reader)
+		for scanner.Scan() {
+			line := scanner.Text()
+			logger.Info("Image Pull output", "message", line)
+		}
+		if err := scanner.Err(); err != nil {
+			errChan <- fmt.Errorf("error reading image-pull "+
+				"stream: %w", err)
+			return
+		}
 	}
 
 	// Extract the repository name from the source URL and use it to set the
@@ -320,7 +357,8 @@ func scheduleFuzzing(ctx context.Context, logger *slog.Logger, cfg *Config,
 		ctx:                  workerCtx,
 		logger:               logger,
 		goGroup:              g,
-		cli:                  cli,
+		dockerClient:         cli,
+		k8sClientSet:         clientset,
 		cfg:                  cfg,
 		taskQueue:            taskQueue,
 		taskTimeout:          perTargetTimeout,

@@ -12,24 +12,27 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-github/v72/github"
 	"golang.org/x/oauth2"
+	"k8s.io/client-go/kubernetes"
 )
 
 // GitHubRepo encapsulates the context, configuration, clients, and logger
 // for operating on a specific GitHub repository.
 type GitHubRepo struct {
-	ctx    context.Context
-	logger *slog.Logger
-	client *github.Client
-	cli    *client.Client
-	cfg    *Config
-	owner  string
-	repo   string
+	ctx          context.Context
+	logger       *slog.Logger
+	client       *github.Client
+	dockerClient *client.Client
+	k8sClientSet *kubernetes.Clientset
+	cfg          *Config
+	owner        string
+	repo         string
 }
 
-// NewGitHubRepo constructs a GitHubRepo instance by parsing the repository URL.
-// It extracts the owner, repository name, and token for authentication.
+// NewGitHubRepo constructs a GitHubRepo instance by parsing the repository URL
+// for the owner and repository name, and reading the access token used for
+// authentication from the environment.
 func NewGitHubRepo(ctx context.Context, logger *slog.Logger, cli *client.Client,
-	cfg *Config) (*GitHubRepo, error) {
+	k8sClientSet *kubernetes.Clientset, cfg *Config) (*GitHubRepo, error) {
 
 	u, err := url.Parse(cfg.Fuzz.CrashRepo)
 	if err != nil {
@@ -41,31 +44,22 @@ func NewGitHubRepo(ctx context.Context, logger *slog.Logger, cli *client.Client,
 		return nil, err
 	}
 
-	token := extractToken(u)
+	token := os.Getenv(GithubTokenEnvVar)
 	if token == "" {
-		return nil, fmt.Errorf("authentication token not provided in "+
-			"repository URL: %s", cfg.Fuzz.CrashRepo)
+		return nil, fmt.Errorf("%s environment variable is required "+
+			"to open issues for crashes", GithubTokenEnvVar)
 	}
 
 	return &GitHubRepo{
-		ctx:    ctx,
-		logger: logger,
-		client: createGitHubClient(ctx, token),
-		cli:    cli,
-		cfg:    cfg,
-		owner:  owner,
-		repo:   repo,
+		ctx:          ctx,
+		logger:       logger,
+		client:       createGitHubClient(ctx, token),
+		dockerClient: cli,
+		k8sClientSet: k8sClientSet,
+		cfg:          cfg,
+		owner:        owner,
+		repo:         repo,
 	}, nil
-}
-
-// extractToken retrieves the access token from the repository URL, if provided.
-func extractToken(u *url.URL) string {
-	if u.User != nil {
-		if pwd, ok := u.User.Password(); ok {
-			return pwd
-		}
-	}
-	return ""
 }
 
 // extractOwnerRepo parses the owner and repository name from the URL path.
@@ -265,9 +259,9 @@ func (gh *GitHubRepo) verifyAndCloseResolvedIssues(pkg, target string) error {
 		}
 
 		// Attempt to reproduce the crash by running the test inside a
-		// container. This allows us to enforce fixed resource limits
-		// and prevent interference with other workers, for example, if
-		// one worker encounters an out-of-memory error.
+		// container/cluster. This allows us to enforce fixed resource
+		// limits and prevent interference with other workers, for
+		// example, if one worker encounters an out-of-memory error.
 		err = gh.reproduceIssue(pkg, target, testCmd, issue)
 		if err != nil {
 			return fmt.Errorf("reproducing issue %d: %w",
@@ -285,43 +279,48 @@ func (gh *GitHubRepo) verifyAndCloseResolvedIssues(pkg, target string) error {
 }
 
 // reproduceIssue attempts to reproduce a reported fuzzing issue for a given
-// package and target. It runs the fuzz test inside a Docker container using the
-// provided test command. If the issue is no longer reproducible, the associated
-// GitHub issue will be closed automatically.
+// package and target. It runs the fuzz test inside a container/cluster using
+// the provided test command. If the issue is no longer reproducible, the
+// associated GitHub issue will be closed automatically.
 func (gh *GitHubRepo) reproduceIssue(pkg, target string, testCmd []string,
 	issue *github.Issue) error {
 
-	// Fuzzing container setup for the issue verification.
-	c := &Container{
-		ctx:    gh.ctx,
-		logger: gh.logger,
-		cli:    gh.cli,
+	// Prepare fuzz runner configuration for the issue verification.
+	fr := &FuzzRunnerConfig{
+		ctx:       gh.ctx,
+		logger:    gh.logger,
+		clientset: gh.k8sClientSet,
+		cli:       gh.dockerClient,
+		cfg:       gh.cfg,
+		pkg:       pkg,
+		target:    target,
 		fuzzBinaryPath: filepath.Join(gh.cfg.Project.BinaryDir, pkg,
 			target),
-		hostCorpusPath: filepath.Join(gh.cfg.Project.CorpusDir, pkg,
+		corpusPath: filepath.Join(gh.cfg.Project.CorpusDir, pkg,
 			"testdata", "fuzz"),
 		cmd: testCmd,
 	}
+	runner := fr.CreateFuzzRunner()
 
-	// Start the container for issue verification.
-	containerID, err := c.Start()
+	// Start the runner for issue verification.
+	fuzzID, err := runner.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start verification container "+
+		return fmt.Errorf("failed to start verification runner "+
 			"for %s/%s: %w", pkg, target, err)
 	}
 	defer func() {
-		if err := c.Stop(containerID); err != nil {
-			gh.logger.Error("Failed to stop container", "error",
-				err, "containerID", containerID)
+		if err := runner.Stop(fuzzID); err != nil {
+			gh.logger.Error("Failed to stop runner", "error", err,
+				"fuzzID", fuzzID)
 		}
 	}()
 
-	// After running the fuzzing container for this issue, if it crashes
+	// After running the fuzzing runner for this issue, if it crashes
 	// again (Wait returns an error), the crash is still reproducible and
-	// the GitHub issue is kept open. If the container exits cleanly, the
+	// the GitHub issue is kept open. If the runner exits cleanly, the
 	// crash is no longer reproducible and the corresponding GitHub issue
 	// is closed.
-	if err := c.Wait(containerID); err != nil {
+	if err := runner.Wait(fuzzID); err != nil {
 		gh.logger.Info("Crash still reproducible; keeping GitHub "+
 			"issue open", "url", issue.GetHTMLURL())
 	} else {

@@ -16,22 +16,33 @@ You can configure **go-continuous-fuzz** using either conifg file or command-lin
 | `fuzz.num-workers`              | Number of concurrent fuzzing workers                         | No       | 1                                                     |
 | `fuzz.corpus-minimize-interval` | Interval between consecutive corpus minimizations            | No       | 7d                                                    |
 | `fuzz.iterations`               | Number of fuzzing cycles to run (0 means to run forever)     | No       | 0                                                     |
+| `fuzz.in-cluster`               | Run in-cluster (Kubernetes). Defaults to Docker. if unset.   | No       | False                                                 |
+| `fuzz.namespace`                | Kubernetes namespace to use (used with --in-cluster).        | No       | default                                               |
 
 **Repository URL formats:**
-For `project.src-repo`:
 
-- Private: `https://oauth2:PAT@github.com/OWNER/REPO.git`
-- Public: `https://github.com/OWNER/REPO.git`
+For both `project.src-repo` and `fuzz.crash-repo`:
 
-For `fuzz.crash-repo`:
+- `https://github.com/OWNER/REPO.git`
 
-- (Requires authentication): `https://oauth2:PAT@github.com/OWNER/REPO.git`
+**GitHub authentication:**
 
-Note: The authentication token is used to open issues on GitHub whenever a crash is detected.
-In short, issues will be created from the GitHub account associated with the provided authentication token.
+The authentication token is read from the `GITHUB_AUTH_TOKEN` environment variable, and must not be embedded in the URL. It is required to:
+
+- clone a private `project.src-repo`, and
+- open issues on `fuzz.crash-repo` whenever a crash is detected.
+
+Cloning a public source repository does not require it.
+
+The same token is used for both repositories, so when `project.src-repo` and `fuzz.crash-repo` are different, it must have access to both. A classic PAT (or a fine-grained PAT whose selected repositories cover both) is sufficient.
+
+Note: Issues will be created from the GitHub account associated with the provided authentication token.
 Similar behavior is followed when closing issues.
 
-**AWS S3 Storage Guidelines**
+In Docker mode, export `GITHUB_AUTH_TOKEN` before running.
+In Kubernetes, set `github.authToken` in the [Helm chart](../go-continuous-fuzz-chart/values.yaml).
+
+## AWS S3 Storage Guidelines
 
 1. **Credentials**
 
@@ -69,7 +80,7 @@ Similar behavior is followed when closing issues.
 
 Note: The updated corpus will be uploaded to the S3 bucket only if the fuzzing cycle completes successfully without any errors or user interruptions.
 
-**Coverage Reports**
+## Coverage Reports
 
 Coverage reports are stored in the specified AWS S3 bucket. This bucket can be configured to serve as a static website for viewing the reports. The entry point for the reports is the `index.html` file. Users should ensure that the appropriate settings are enabled in the S3 bucket to allow static website hosting.
 
@@ -82,6 +93,36 @@ The file structure of the coverage reports is as follows:
   - A separate `.html` file for each package/target coverage report.
   - A `.json` history file tracking daily coverage changes for each package/target.
   - Subdirectories structured as `pkg/fuzzTarget/` containing daily HTML coverage reports (e.g., `2025-07-12.html`) generated via `go tool cover`.
+
+## Running in Kubernetes Cluster
+
+When the flag `--fuzz.in-cluster` is set, `go-continuous-fuzz` runs inside the Kubernetes cluster. This means the application must be executed within a Pod.
+
+### Helm Chart Installation
+
+Before launching the Pod, install the standard Helm chart to set up the necessary Kubernetes resources:
+
+```sh
+helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" --namespace "${K8S_NAMESPACE}"
+```
+
+Note: Configure the required AWS and GitHub secrets in the [Helm chart](../go-continuous-fuzz-chart/values.yaml) or pass them using `--set <key>=<value>` before deploying the go-continuous-fuzz project.
+
+**Important:** The Helm chart provided values are mainly for example/testing purposes. Make sure to change them according to your project requirements while following the guidelines below.
+
+1. The project relies on specific, fixed resource names for in-cluster fuzzing. When creating the Pod, ConfigMap/Secret, and PersistentVolumeClaim, make sure to use these exact names to ensure everything works correctly. These include:
+   - **ServiceAccount**: `go-continuous-fuzz-sa`
+   - **PersistentVolumeClaim (PVC)**: `go-continuous-fuzz-pvc`
+
+2. Each fuzz target requires **2 GB of memory** and **1 CPU**. Ensure that your PVC requests adequate storage, or the application may behave unexpectedly (e.g., fuzzing jobs remain pending and then stop).
+
+3. Since the PVC is shared across multiple pods/jobs, the `accessModes` for the PVC must be set to `ReadWriteMany`. Make sure that the underlying StorageClass supports the `ReadWriteMany` access mode.
+
+4. We use a standard volume mount path inside the cluster, so make sure `project.workspace-path` is set in the Helm chart. This is where the PersistentVolumeClaim will be mounted for corpus sharing across the cluster.
+
+5. The configuration file must be mounted (via ConfigMap or Secret) to the path `/root/.go-continuous-fuzz/` with the filename `go-continuous-fuzz.conf`.
+
+Note: In the Docker setup, each fuzz target runs in a separate Docker container, with a fixed resource limit of **2 GB of memory** and **1 CPU** per container. In the Kubernetes setup, each fuzz target runs in a separate Pod with the same fixed resource constraints. This isolation ensures that `go-continuous-fuzz` can handle out-of-memory (OOM) errors in one fuzz target without affecting the execution of others.
 
 ## Notes
 
@@ -113,6 +154,9 @@ The file structure of the coverage reports is as follows:
 8. **Automatic Issue Closure:**
    For each fuzz target, GitHub issues will be automatically closed if the crash is no longer reproducible, indicating that the issue has been resolved.
 
+9. **Fuzzing Execution Modes:**
+   Fuzzing can be run locally, where each fuzz target runs in a separate Docker container. Alternatively, you can use the `--fuzz.in-cluster` flag to run inside a Kubernetes cluster, where each fuzz target is executed as a separate Kubernetes Job, spawning individual Pods.
+
 ## Running go-continuous-fuzz
 
 1. **Clone the Repository**
@@ -139,7 +183,11 @@ The file structure of the coverage reports is as follows:
      --fuzz.num-workers=<number_of_workers>
      --fuzz.corpus-minimize-interval=<time>
      --fuzz.iterations=<number_of_iterations>
+     --fuzz.in-cluster
+     --fuzz.namespace=<namespace>
    ```
+
+Note: Ensure the target namespace `<namespace>` exists prior to running this command.
 
 3. **Run the Fuzzing Engine:**  
    With your config file configured, start the fuzzing process. Run:

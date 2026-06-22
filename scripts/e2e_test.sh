@@ -4,8 +4,15 @@ set -eux
 
 # ====== CONFIGURATION ======
 
+readonly MODE="${1:-docker}" # default to 'docker' if not specified
+# Validate MODE
+if [[ "$MODE" != "docker" && "$MODE" != "k8s" ]]; then
+  echo "❌ Invalid mode: '$MODE'. Allowed values are 'docker' or 'k8s'."
+  exit 1
+fi
+
 # Temporary Variables
-readonly PROJECT_SRC_PATH="https://oauth2:${GO_FUZZING_EXAMPLE_AUTH_TOKEN}@github.com/go-continuous-fuzz/go-fuzzing-example.git"
+readonly PROJECT_SRC_REPO="https://github.com/NishantBansal2003/go-fuzzing-example.git"
 readonly SYNC_FREQUENCY="3m"
 readonly CORPUS_MINIMIZE_INTERVAL="4m"
 readonly ITERATIONS=3
@@ -20,20 +27,6 @@ readonly CORPUS_DIR_PATH="${TEST_WORKDIR}/${CORPUS_DIR_NAME}"
 readonly FUZZ_RESULTS_PATH="${TEST_WORKDIR}/fuzz_results"
 readonly BUCKET_NAME="test-go-continuous-fuzz-bucket"
 readonly GCF_LOG="${FUZZ_RESULTS_PATH}/gcf.log"
-
-# Command-line flags for fuzzing process configuration
-ARGS="\
---logdir=${FUZZ_RESULTS_PATH} \
---project.src-repo=${PROJECT_SRC_PATH} \
---project.s3-bucket-name=${BUCKET_NAME} \
---fuzz.sync-frequency=${SYNC_FREQUENCY} \
---fuzz.corpus-minimize-interval=${CORPUS_MINIMIZE_INTERVAL} \
---fuzz.iterations=${ITERATIONS} \
---fuzz.crash-repo=${PROJECT_SRC_PATH} \
---fuzz.num-workers=3 \
---fuzz.pkgs-path=parser \
---fuzz.pkgs-path=stringutils \
---fuzz.pkgs-path=tree"
 
 # Non-crashing fuzz target definitions (package:function)
 readonly NON_CRASHING_FUZZ_TARGETS=(
@@ -120,7 +113,7 @@ check_issue_contains_string() {
 
   # Extract owner, and repo from URL
   local owner_repo owner repo
-  owner_repo=$(echo "${PROJECT_SRC_PATH}" | sed -n 's|.*github.com/\(.*\)\.git|\1|p')
+  owner_repo=$(echo "${PROJECT_SRC_REPO}" | sed -n 's|.*github.com/\(.*\)\.git|\1|p')
   owner=$(echo "${owner_repo}" | cut -d'/' -f1)
   repo=$(echo "${owner_repo}" | cut -d'/' -f2)
 
@@ -133,7 +126,7 @@ check_issue_contains_string() {
 
   # Fetch issues from GitHub API
   local issues
-  issues=$(curl -s \
+  issues=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
     "https://api.github.com/repos/${owner}/${repo}/issues")
 
   # Check if any issue body contains the target string
@@ -158,13 +151,61 @@ trap cleanup EXIT
 
 # Clone the target repository
 echo "Cloning project repository..."
-git clone "${PROJECT_SRC_PATH}" "${PROJECT_DIR}"
+git clone "${PROJECT_SRC_REPO}" "${PROJECT_DIR}"
 
 # Download and extract only the seed_corpus directory from the project tarball
 echo "Downloading seed corpus..."
 mkdir -p ${CORPUS_DIR_PATH}
-curl -L https://codeload.github.com/go-continuous-fuzz/go-fuzzing-example/tar.gz/main |
+curl -L https://codeload.github.com/NishantBansal2003/go-fuzzing-example/tar.gz/main |
   tar -xz --strip-components=2 -C ${CORPUS_DIR_PATH} go-fuzzing-example-main/seed_corpus
+
+# ====== LOCAL S3 EMULATOR (CI ONLY) ======
+#
+# In CI we never touch real AWS. When USE_LOCAL_S3=true (set by the CI
+# workflow) the AWS CLI and the go-continuous-fuzz binary are pointed at a
+# LocalStack S3 emulator purely through the standard AWS_ENDPOINT_URL_S3
+# environment variable, so the exact same code paths run unchanged against
+# real AWS in production.
+#
+# For docker mode LocalStack runs as a workflow service container and the
+# endpoint is supplied through the environment, so nothing is needed here.
+# For k8s mode the binary runs inside the cluster, so we deploy LocalStack
+# there and expose it both to the host (NodePort, for the verification steps
+# below) and to the pod (ClusterIP, wired in via Helm further down).
+EMULATOR_HELM_ARGS=()
+if [[ "${USE_LOCAL_S3:-false}" == "true" && "${MODE}" == "k8s" ]]; then
+  echo "Deploying in-cluster LocalStack S3 emulator..."
+  LOCALSTACK_NS="localstack"
+
+  kubectl create namespace "${LOCALSTACK_NS}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -n "${LOCALSTACK_NS}" -f scripts/localstack.yaml
+
+  echo "Waiting for LocalStack to become ready..."
+  kubectl rollout status deployment/localstack \
+    -n "${LOCALSTACK_NS}" --timeout=180s
+
+  ls_cluster_ip=$(kubectl get svc localstack -n "${LOCALSTACK_NS}" \
+    -o jsonpath='{.spec.clusterIP}')
+  ls_node_port=$(kubectl get svc localstack -n "${LOCALSTACK_NS}" \
+    -o jsonpath='{.spec.ports[0].nodePort}')
+
+  # Host-side AWS CLI reaches LocalStack via the NodePort. The endpoint is an
+  # IP, so use path-style addressing for the CLI.
+  export AWS_ENDPOINT_URL_S3="http://$(minikube ip):${ls_node_port}"
+  aws configure set default.s3.addressing_style path
+
+  # The pod reaches LocalStack via its magic hostname (which LocalStack
+  # recognises for virtual-hosted bucket addressing). hostAliases override
+  # DNS so both the endpoint host and the bucket's virtual-host subdomain
+  # resolve to the LocalStack ClusterIP from inside the pod.
+  EMULATOR_HELM_ARGS=(
+    --set aws.endpointUrl="http://s3.localhost.localstack.cloud:4566"
+    --set "pod.hostAliases[0].ip=${ls_cluster_ip}"
+    --set "pod.hostAliases[0].hostnames[0]=s3.localhost.localstack.cloud"
+    --set "pod.hostAliases[0].hostnames[1]=${BUCKET_NAME}.s3.localhost.localstack.cloud"
+  )
+fi
 
 # Create the S3 bucket (if not already) and upload the zipped corpus
 echo "Creating S3 bucket and uploading corpus..."
@@ -201,18 +242,111 @@ done
 echo "Starting fuzzing process..."
 mkdir -p "${FUZZ_RESULTS_PATH}"
 
-# Run make run, capturing stdout+stderr into GCF_LOG.
-make run ARGS="${ARGS}"
-status=${?}
+if [[ ${MODE} == "k8s" ]]; then
+  echo "Running in Kubernetes mode..."
 
-# Handle exit codes.
-if [[ ${status} -ne 0 ]]; then
-  echo "❌ Fuzzing exited with unexpected error (status: ${status})."
-  exit "${status}"
+  # Configuration variables
+  readonly HELM_RELEASE_NAME="go-continuous-fuzz"
+  readonly K8S_NAMESPACE="go-continuous-fuzz-ns"
+  readonly POD_NAME="go-continuous-fuzz-pod"
+
+  # Get AWS credentials from the AWS configuration if they are not already set
+  AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-$(aws configure get aws_access_key_id)}
+  AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-$(aws configure get aws_secret_access_key)}
+  AWS_REGION=${AWS_REGION:-$(aws configure get region)}
+
+  # aws configure get returns a non-zero exit code if the config does not exist.
+  # Since AWS_SESSION_TOKEN is an optional variable, we will not fail the script
+  # if it is not set in the environment or in AWS config.
+  AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-$(aws configure get aws_session_token || true)}
+
+  # Enable Docker environment inside Minikube
+  eval $(minikube docker-env)
+
+  # Build Docker image
+  echo "Building Docker image..."
+  if ! make docker; then
+    echo "❌ Failed to build Docker image"
+    exit 1
+  fi
+
+  # Deploy Helm chart
+  echo "Installing/Upgrading Helm release..."
+  if ! helm upgrade --install "${HELM_RELEASE_NAME}" "./go-continuous-fuzz-chart" \
+    --namespace "${K8S_NAMESPACE}" \
+    --create-namespace \
+    --set project.srcRepo="${PROJECT_SRC_REPO}" \
+    --set project.s3BucketName="${BUCKET_NAME}" \
+    --set fuzz.crashRepo="${PROJECT_SRC_REPO}" \
+    --set fuzz.pkgsPath="{parser,stringutils,tree}" \
+    --set fuzz.syncFrequency="${SYNC_FREQUENCY}" \
+    --set fuzz.corpusMinimizeInterval="${CORPUS_MINIMIZE_INTERVAL}" \
+    --set fuzz.iterations=${ITERATIONS} \
+    --set fuzz.numWorkers=3 \
+    --set aws.accessKeyId="${AWS_ACCESS_KEY_ID}" \
+    --set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}" \
+    --set aws.region="${AWS_REGION}" \
+    --set aws.sessionToken="${AWS_SESSION_TOKEN:-}" \
+    --set github.authToken="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
+    ${EMULATOR_HELM_ARGS[@]+"${EMULATOR_HELM_ARGS[@]}"}; then
+    echo "❌ Failed to deploy Helm chart"
+    exit 1
+  fi
+
+  # Set the default namespace for kubectl commands
+  kubectl config set-context --current --namespace="${K8S_NAMESPACE}"
+
+  # Wait for the pod to be ready
+  echo "Waiting for pod '${POD_NAME}' to be ready..."
+  if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" --timeout=60s; then
+    echo "❌ Pod '${POD_NAME}' did not become ready in time"
+    kubectl describe pod "${POD_NAME}"
+    exit 1
+  fi
+
+  # In k8s, the logs are stored at /root/.go-continuous-fuzz/logs/gcf.log
+  # inside the cluster, which is not accessible from the host filesystem.
+  # Therefore, we stream the pod logs to the GCF_LOG file on the host.
+  echo "Streaming logs from pod..."
+  kubectl logs -f "${POD_NAME}" | tee -a "${GCF_LOG}"
+
+  # Clean up pod
+  kubectl delete pod "${POD_NAME}" --ignore-not-found
+
+else
+  echo "Running in Docker mode..."
+
+  # Command-line flags for fuzzing process configuration
+  ARGS="\
+--logdir=${FUZZ_RESULTS_PATH} \
+--project.src-repo=${PROJECT_SRC_REPO} \
+--project.s3-bucket-name=${BUCKET_NAME} \
+--fuzz.sync-frequency=${SYNC_FREQUENCY} \
+--fuzz.corpus-minimize-interval=${CORPUS_MINIMIZE_INTERVAL} \
+--fuzz.iterations=${ITERATIONS} \
+--fuzz.crash-repo=${PROJECT_SRC_REPO} \
+--fuzz.num-workers=3 \
+--fuzz.pkgs-path=parser \
+--fuzz.pkgs-path=stringutils \
+--fuzz.pkgs-path=tree"
+
+  # Provide the GitHub token via the environment so gcf can clone the
+  # source repo and open crash issues.
+  export GITHUB_AUTH_TOKEN="${GO_FUZZING_EXAMPLE_AUTH_TOKEN}"
+
+  # Run make run, capturing stdout+stderr into GCF_LOG.
+  make run ARGS="${ARGS}"
+  status=${?}
+
+  # Handle exit codes.
+  if [[ ${status} -ne 0 ]]; then
+    echo "❌ Fuzzing exited with unexpected error (status: ${status})."
+    exit "${status}"
+  fi
 fi
 
 # List of required patterns to check in the log
-readonly REQUIRED_PATTERNS=(
+REQUIRED_PATTERNS=(
   'All workers completed early; cleaning up cycle' # due to grace period
   'Successfully downloaded and unzipped corpus'
   'Successfully zipped and uploaded corpus'
@@ -221,11 +355,6 @@ readonly REQUIRED_PATTERNS=(
   'msg="Building fuzz binary" package=parser target=FuzzParseComplex'
   'msg="Building fuzz binary" package=parser target=FuzzEvalExpr'
   'msg="Building fuzz binary" package=tree target=FuzzBuildTree'
-  'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzUnSafeReverseString'
-  'msg="Fuzzing in Docker completed successfully" package=stringutils target=FuzzReverseString'
-  'msg="Fuzzing in Docker completed successfully" package=parser target=FuzzParseComplex'
-  'msg="Fuzzing in Docker completed successfully" package=parser target=FuzzEvalExpr'
-  'msg="Fuzzing in Docker completed successfully" package=tree target=FuzzBuildTree'
   'msg="Successfully added/updated coverage report" package=stringutils target=FuzzUnSafeReverseString'
   'msg="Successfully added/updated coverage report" package=stringutils target=FuzzReverseString'
   'msg="Successfully added/updated coverage report" package=parser target=FuzzParseComplex'
@@ -250,6 +379,26 @@ readonly REQUIRED_PATTERNS=(
   'msg="Per-target fuzz timeout calculated" duration=1m30s'
   'msg="Completed all fuzzing cycles" count=3'
 )
+
+if [[ ${MODE} == "k8s" ]]; then
+  REQUIRED_PATTERNS+=(
+    'msg="Running fuzzing jobs" mode=Kubernetes'
+    'msg="Fuzzing completed successfully" mode=Kubernetes package=stringutils target=FuzzUnSafeReverseString'
+    'msg="Fuzzing completed successfully" mode=Kubernetes package=stringutils target=FuzzReverseString'
+    'msg="Fuzzing completed successfully" mode=Kubernetes package=parser target=FuzzParseComplex'
+    'msg="Fuzzing completed successfully" mode=Kubernetes package=parser target=FuzzEvalExpr'
+    'msg="Fuzzing completed successfully" mode=Kubernetes package=tree target=FuzzBuildTree'
+  )
+else
+  REQUIRED_PATTERNS+=(
+    'msg="Running fuzzing jobs" mode=Docker'
+    'msg="Fuzzing completed successfully" mode=Docker package=stringutils target=FuzzUnSafeReverseString'
+    'msg="Fuzzing completed successfully" mode=Docker package=stringutils target=FuzzReverseString'
+    'msg="Fuzzing completed successfully" mode=Docker package=parser target=FuzzParseComplex'
+    'msg="Fuzzing completed successfully" mode=Docker package=parser target=FuzzEvalExpr'
+    'msg="Fuzzing completed successfully" mode=Docker package=tree target=FuzzBuildTree'
+  )
+fi
 
 # Verify that worker logs contain expected entries
 echo "Verifying worker log entries in ${GCF_LOG}..."
@@ -292,7 +441,7 @@ for target in "${CRASHING_FUZZ_TARGETS[@]}"; do
 done
 
 # List of patterns that should NOT be present in the log
-readonly FORBIDDEN_PATTERNS=(
+FORBIDDEN_PATTERNS=(
   'level=ERROR'
   'msg="Worker starting fuzzing" workerID=4'
   'msg="Worker starting issue verification" workerID=4'
@@ -304,6 +453,16 @@ readonly FORBIDDEN_PATTERNS=(
   'No failing testcase found in body; skipping issue, possibly an unrelated issue with a similar title'
   'Seed corpus crash detected; manual verification required'
 )
+
+if [[ ${MODE} == "k8s" ]]; then
+  FORBIDDEN_PATTERNS+=(
+    'msg="Running fuzzing jobs" mode=Docker'
+  )
+else
+  FORBIDDEN_PATTERNS+=(
+    'msg="Running fuzzing jobs" mode=Kubernetes'
+  )
+fi
 
 # Verify that worker logs do not contain forbidden entries
 echo "Verifying absence of forbidden log entries in ${GCF_LOG}..."
@@ -383,7 +542,8 @@ for crash in "${required_crashes[@]}"; do
 done
 
 # Verify the expected number of open issues in the crash repo
-issue_count=$(curl -s "https://api.github.com/search/issues?q=repo:go-continuous-fuzz/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
+issue_count=$(curl -s -H "Authorization: token ${GO_FUZZING_EXAMPLE_AUTH_TOKEN}" \
+  "https://api.github.com/search/issues?q=repo:NishantBansal2003/go-fuzzing-example+is:issue+is:open" | jq ".total_count")
 if [[ "${issue_count}" -ne 3 ]]; then
   echo "❌ ERROR: Expected 3 open issues, but found ${issue_count}"
   exit 1

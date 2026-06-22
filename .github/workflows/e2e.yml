@@ -3,37 +3,55 @@ name: E2E Tests
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: "Commit SHA to test"
-        required: true
+  pull_request:
+    branches: [main]
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
-  e2e-test:
-    name: Run E2E Tests
+  e2e-test-docker:
+    name: E2E Tests for Docker setup
     runs-on: ubuntu-latest
     env:
       GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GO_FUZZING_EXAMPLE_AUTH_TOKEN }}
+      # Emulate AWS with LocalStack (running as the service container below)
+      # instead of touching real AWS. The AWS CLI and SDK both pick up the
+      # endpoint via the standard AWS_ENDPOINT_URL_S3 variable; the magic
+      # *.localhost.localstack.cloud domain resolves to 127.0.0.1.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL_S3: http://s3.localhost.localstack.cloud:4566
+    services:
+      localstack:
+        # Pinned to 4.4.0: the last release that runs S3 for free. From
+        # 2026.03.0 onward LocalStack images require an auth token even for
+        # community services and exit with code 55 without one.
+        image: localstack/localstack:4.4.0
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::362112066003:role/s3_go-continuous-fuzz
-          aws-region: us-east-1
+      - name: Wait for LocalStack to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/_localstack/health; then
+              echo "LocalStack is ready"
+              exit 0
+            fi
+            echo "Waiting for LocalStack... ($i)"
+            sleep 2
+          done
+          echo "LocalStack did not become ready in time"
+          exit 1
 
       - name: Set up Go
-        id: setup
         uses: actions/setup-go@v4
         with:
           go-version: "1.24.6"
@@ -41,5 +59,43 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run E2E tests
-        run: make e2e-test
+      - name: Run E2E Tests for Docker setup
+        run: make e2e-test-docker
+
+  e2e-test-k8s:
+    name: E2E Tests for Kubernetes setup
+    runs-on: ubuntu-latest
+    needs: e2e-test-docker
+    env:
+      GO_FUZZING_EXAMPLE_AUTH_TOKEN: ${{ secrets.GO_FUZZING_EXAMPLE_AUTH_TOKEN }}
+      # Emulate AWS with LocalStack deployed inside the minikube cluster by the
+      # e2e script. AWS_ENDPOINT_URL_S3 is set by the script at runtime since
+      # it depends on the minikube IP / NodePort.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      USE_LOCAL_S3: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          cpus: 4
+          memory: 8g
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24.6"
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run E2E Tests for Kubernetes setup
+        run: make e2e-test-k8s
